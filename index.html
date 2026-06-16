@@ -622,8 +622,10 @@
     // Proteção: bloquear arrastar
     document.addEventListener('dragstart', function(e) { e.preventDefault(); return false; });
 
-    // Proteção: detectar DevTools
+    // Proteção: detectar DevTools (apenas desktop, ignora mobile)
     (function detectDevTools() {
+      const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
+      if (isMobile) return;
       const threshold = 160;
       function check() {
         if (window.outerWidth - window.innerWidth > threshold || window.outerHeight - window.innerHeight > threshold) {
