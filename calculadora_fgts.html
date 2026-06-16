@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calculadora de FGTS — Fins Processuais</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f4f5f7;
+      color: #1a1a1a;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    .page-header {
+      max-width: 640px;
+      margin: 0 auto 1.5rem;
+    }
+    .page-header h1 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #0C447C;
+      margin-bottom: 4px;
+    }
+    .page-header p {
+      font-size: 13px;
+      color: #6b7280;
+    }
+
+    .wrap { max-width: 640px; margin: 0 auto; }
+
+    .card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+
+    .card-title {
+      font-size: 11px;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .fields-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    @media (max-width: 480px) {
+      .fields-grid { grid-template-columns: 1fr; }
+    }
+
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field label { font-size: 12px; color: #6b7280; font-weight: 500; }
+
+    .input-pfx {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      background: #f9fafb;
+      padding: 0 12px;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .input-pfx:focus-within {
+      border-color: #185FA5;
+      box-shadow: 0 0 0 3px rgba(24,95,165,0.1);
+    }
+    .pfx { font-size: 14px; color: #9ca3af; white-space: nowrap; }
+
+    .finput {
+      flex: 1;
+      font-size: 16px;
+      font-weight: 500;
+      padding: 10px 0;
+      border: none;
+      background: transparent;
+      color: #1a1a1a;
+      outline: none;
+      width: 100%;
+    }
+
+    .input-full {
+      width: 100%;
+      font-size: 14px;
+      padding: 10px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      background: #f9fafb;
+      color: #1a1a1a;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .input-full:focus {
+      border-color: #185FA5;
+      box-shadow: 0 0 0 3px rgba(24,95,165,0.1);
+    }
+
+    .badge-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .badge, .mbtn {
+      font-size: 11px;
+      padding: 3px 9px;
+      border-radius: 6px;
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      color: #6b7280;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+    .badge:hover, .mbtn:hover { background: #e5e7eb; }
+
+    .nome-field { margin-top: 14px; }
+
+    .error { font-size: 12px; color: #dc2626; margin-top: 8px; min-height: 16px; }
+
+    .calc-btn {
+      width: 100%;
+      margin-top: 1.25rem;
+      padding: 13px;
+      font-size: 15px;
+      font-weight: 600;
+      background: #185FA5;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .calc-btn:hover { background: #0C447C; }
+
+    .hidden { display: none !important; }
+
+    .result-hero {
+      background: #EFF6FF;
+      border: 1px solid #BFDBFE;
+      border-radius: 10px;
+      padding: 1.25rem;
+    }
+    .result-lbl { font-size: 11px; color: #3B82F6; margin-bottom: 4px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+    .result-val { font-size: 32px; font-weight: 700; color: #0C447C; }
+    .result-sub { font-size: 12px; color: #6b7280; margin-top: 4px; }
+
+    .divider { border: none; border-top: 1px solid #f3f4f6; margin: 1.25rem 0; }
+
+    .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1rem; }
+    @media (max-width: 480px) { .metrics { grid-template-columns: 1fr 1fr; } }
+
+    .metric {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 0.75rem;
+    }
+    .metric-val { font-size: 15px; font-weight: 600; color: #1a1a1a; }
+    .metric-lbl { font-size: 11px; color: #9ca3af; margin-top: 3px; line-height: 1.4; }
+
+    .table-scroll {
+      max-height: 240px;
+      overflow-y: auto;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      margin-top: 0.5rem;
+    }
+
+    .period-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .period-table th {
+      font-size: 11px;
+      color: #6b7280;
+      font-weight: 600;
+      text-align: left;
+      padding: 8px 10px;
+      border-bottom: 1px solid #e5e7eb;
+      background: #f9fafb;
+      position: sticky;
+      top: 0;
+    }
+    .period-table td { padding: 8px 10px; border-bottom: 1px solid #f3f4f6; color: #1a1a1a; }
+    .period-table tbody tr:hover { background: #f9fafb; }
+    .period-table tfoot td {
+      font-weight: 600;
+      background: #EFF6FF;
+      color: #0C447C;
+      border-top: 1px solid #BFDBFE;
+      border-bottom: none;
+    }
+    .period-table td:last-child, .period-table th:last-child { text-align: right; }
+    .period-table td:first-child { color: #9ca3af; }
+
+    .info-box {
+      background: #EFF6FF;
+      border-left: 3px solid #185FA5;
+      border-radius: 0 8px 8px 0;
+      padding: 0.75rem 1rem;
+      font-size: 13px;
+      color: #0C447C;
+      line-height: 1.6;
+      margin-top: 1rem;
+    }
+
+    .export-row { display: flex; gap: 10px; margin-top: 1rem; }
+    @media (max-width: 400px) { .export-row { flex-direction: column; } }
+
+    .exp-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.12s;
+    }
+    .pdf-btn { background: #FEF2F2; border-color: #FECACA; color: #991B1B; }
+    .pdf-btn:hover { background: #FEE2E2; }
+    .xls-btn { background: #F0FDF4; border-color: #BBF7D0; color: #166534; }
+    .xls-btn:hover { background: #DCFCE7; }
+
+    .footer-note {
+      text-align: center;
+      font-size: 11px;
+      color: #9ca3af;
+      margin-top: 1.5rem;
+      padding-bottom: 1rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page-header">
+    <h1><i class="ti ti-building-bank" style="font-size:18px;vertical-align:-3px;margin-right:6px"></i>Calculadora de FGTS — Fins Processuais</h1>
+    <p>Calcule o FGTS devido com base na remuneração e quantidade de meses em débito</p>
+  </div>
+
+  <div class="wrap">
+
+    <div class="card">
+      <div class="card-title">
+        <i class="ti ti-calculator" style="font-size:14px"></i>
+        Dados para cálculo
+      </div>
+
+      <div class="fields-grid">
+        <div class="field">
+          <label>Remuneração mensal bruta</label>
+          <div class="input-pfx">
+            <span class="pfx">R$</span>
+            <input class="finput" id="salInput" type="text" placeholder="0,00" inputmode="decimal" autocomplete="off" />
+          </div>
+          <div class="badge-row">
+            <span class="badge" onclick="setSal(1412)">SM R$1.412</span>
+            <span class="badge" onclick="setSal(3000)">R$3.000</span>
+            <span class="badge" onclick="setSal(5000)">R$5.000</span>
+            <span class="badge" onclick="setSal(8000)">R$8.000</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Quantidade de meses em débito</label>
+          <div class="input-pfx">
+            <input class="finput" id="mesesInput" type="number" min="1" max="120" placeholder="0" style="text-align:center;" />
+            <span class="pfx">meses</span>
+          </div>
+          <div class="badge-row">
+            <span class="mbtn" onclick="setMeses(1)">1</span>
+            <span class="mbtn" onclick="setMeses(3)">3</span>
+            <span class="mbtn" onclick="setMeses(6)">6</span>
+            <span class="mbtn" onclick="setMeses(12)">12</span>
+            <span class="mbtn" onclick="setMeses(24)">24</span>
+            <span class="mbtn" onclick="setMeses(36)">36</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="nome-field">
+        <div class="field">
+          <label>Nome do trabalhador (opcional)</label>
+          <input class="input-full" id="nomeInput" type="text" placeholder="Ex.: João da Silva" />
+        </div>
+      </div>
+
+      <div id="errMsg" class="error"></div>
+
+      <button class="calc-btn" onclick="calcular()">
+        <i class="ti ti-calculator" style="font-size:16px"></i>
+        Calcular FGTS devido
+      </button>
+    </div>
+
+    <div class="card hidden" id="resultCard">
+      <div class="result-hero">
+        <div class="result-lbl">Total de FGTS devido no período</div>
+        <div class="result-val" id="rTotal">R$ 0,00</div>
+        <div class="result-sub" id="rSub">—</div>
+      </div>
+
+      <hr class="divider">
+
+      <div class="metrics">
+        <div class="metric">
+          <div class="metric-val" id="mSal">—</div>
+          <div class="metric-lbl">Remuneração mensal</div>
+        </div>
+        <div class="metric">
+          <div class="metric-val" id="mMensal" style="color:#185FA5">—</div>
+          <div class="metric-lbl">FGTS por mês (8%)</div>
+        </div>
+        <div class="metric">
+          <div class="metric-val" id="mMeses">—</div>
+          <div class="metric-lbl">Meses em débito</div>
+        </div>
+      </div>
+
+      <div class="card-title" style="margin-bottom:0.5rem">
+        <i class="ti ti-list" style="font-size:13px"></i>
+        Detalhamento por período
+      </div>
+
+      <div class="table-scroll">
+        <table class="period-table">
+          <thead>
+            <tr>
+              <th style="width:36px">#</th>
+              <th>Competência</th>
+              <th style="text-align:right">Remuneração</th>
+              <th style="text-align:right">FGTS (8%)</th>
+            </tr>
+          </thead>
+          <tbody id="periodoTbody"></tbody>
+          <tfoot id="periodoTfoot"></tfoot>
+        </table>
+      </div>
+
+      <div class="info-box">
+        <i class="ti ti-info-circle" style="font-size:14px;vertical-align:-2px;margin-right:6px"></i>
+        <span id="infoText"></span>
+      </div>
+
+      <div class="export-row">
+        <button class="exp-btn pdf-btn" onclick="exportarPDF()">
+          <i class="ti ti-file-type-pdf" style="font-size:18px"></i>
+          Exportar PDF
+        </button>
+        <button class="exp-btn xls-btn" onclick="exportarExcel()">
+          <i class="ti ti-file-spreadsheet" style="font-size:18px"></i>
+          Exportar Excel
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <p class="footer-note">Fundamentação: art. 15 da Lei nº 8.036/1990 — Alíquota FGTS: 8%</p>
+
+  <script>
+    let dadosCalculo = null;
+
+    function parseBRL(s) {
+      if (!s) return NaN;
+      return parseFloat(s.replace(/\s/g,'').replace(/R\$\s?/g,'').replace(/\./g,'').replace(',','.'));
+    }
+
+    function fmt(n) {
+      return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function setSal(v) {
+      document.getElementById('salInput').value = v.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+      document.getElementById('errMsg').textContent = '';
+    }
+
+    function setMeses(v) {
+      document.getElementById('mesesInput').value = v;
+      document.getElementById('errMsg').textContent = '';
+    }
+
+    function getCompetencias(meses) {
+      const hoje = new Date();
+      const lista = [];
+      for (let i = meses - 1; i >= 0; i--) {
+        const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+        const label = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+        lista.push(label.charAt(0).toUpperCase() + label.slice(1));
+      }
+      return lista;
+    }
+
+    function calcular() {
+      const raw = document.getElementById('salInput').value;
+      const sal = parseBRL(raw);
+      const meses = parseInt(document.getElementById('mesesInput').value) || 0;
+      const nome = document.getElementById('nomeInput').value.trim();
+      const err = document.getElementById('errMsg');
+
+      if (isNaN(sal) || sal <= 0) {
+        err.textContent = 'Informe uma remuneração válida e maior que zero.';
+        return;
+      }
+      if (meses <= 0) {
+        err.textContent = 'Informe a quantidade de meses em débito.';
+        return;
+      }
+      if (meses > 120) {
+        err.textContent = 'Quantidade máxima: 120 meses.';
+        return;
+      }
+      err.textContent = '';
+
+      const fgtsMensal = sal * 0.08;
+      const total = fgtsMensal * meses;
+      const competencias = getCompetencias(meses);
+
+      dadosCalculo = { sal, fgtsMensal, total, meses, nome, competencias };
+
+      document.getElementById('rTotal').textContent = fmt(total);
+      document.getElementById('rSub').textContent = `${meses} mês${meses > 1 ? 'es' : ''} × ${fmt(fgtsMensal)}/mês (8%)`;
+      document.getElementById('mSal').textContent = fmt(sal);
+      document.getElementById('mMensal').textContent = fmt(fgtsMensal);
+      document.getElementById('mMeses').textContent = `${meses} mês${meses > 1 ? 'es' : ''}`;
+
+      const tbody = document.getElementById('periodoTbody');
+      tbody.innerHTML = competencias.map((c, i) => `
+        <tr>
+          <td>${i + 1}</td>
+          <td>${c}</td>
+          <td style="text-align:right">${fmt(sal)}</td>
+          <td style="text-align:right;color:#185FA5;font-weight:500">${fmt(fgtsMensal)}</td>
+        </tr>`).join('');
+
+      document.getElementById('periodoTfoot').innerHTML = `
+        <tr>
+          <td colspan="2">Total</td>
+          <td style="text-align:right">${fmt(sal * meses)}</td>
+          <td style="text-align:right">${fmt(total)}</td>
+        </tr>`;
+
+      const nomeStr = nome ? `do trabalhador ${nome} ` : '';
+      document.getElementById('infoText').textContent =
+        `Conforme o art. 15 da Lei nº 8.036/1990, o empregador é obrigado a depositar mensalmente 8% da remuneração paga ao trabalhador. O total de FGTS ${nomeStr}não depositado no período de ${meses} mês${meses > 1 ? 'es' : ''} é de ${fmt(total)}.`;
+
+      document.getElementById('resultCard').classList.remove('hidden');
+      document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function exportarExcel() {
+      if (!dadosCalculo) return;
+      const { sal, fgtsMensal, total, meses, nome, competencias } = dadosCalculo;
+      const nomeStr = nome || '—';
+      const hoje = new Date().toLocaleDateString('pt-BR');
+
+      const cabecalho = [
+        ['CÁLCULO DE FGTS PARA FINS PROCESSUAIS'],
+        ['Data de emissão:', hoje],
+        ['Trabalhador:', nomeStr],
+        ['Fundamentação:', 'Art. 15 da Lei nº 8.036/1990 — Alíquota: 8%'],
+        [],
+        ['RESUMO'],
+        ['Remuneração mensal bruta:', fmt(sal)],
+        ['FGTS mensal (8%):', fmt(fgtsMensal)],
+        ['Meses em débito:', meses],
+        ['Total devido:', fmt(total)],
+        [],
+        ['DETALHAMENTO POR PERÍODO'],
+        ['#', 'Competência', 'Remuneração', 'FGTS (8%)']
+      ];
+
+      const linhas = competencias.map((c, i) => [i + 1, c, sal, fgtsMensal]);
+      linhas.push(['', 'TOTAL', sal * meses, total]);
+
+      const ws = XLSX.utils.aoa_to_sheet([...cabecalho, ...linhas]);
+      ws['!cols'] = [{ wch: 5 }, { wch: 30 }, { wch: 24 }, { wch: 20 }];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'FGTS');
+      XLSX.writeFile(wb, `FGTS_${nomeStr.replace(/\s/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    }
+
+    function exportarPDF() {
+      if (!dadosCalculo) return;
+      const { sal, fgtsMensal, total, meses, nome, competencias } = dadosCalculo;
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+      const azul = [24, 95, 165];
+      const cinzaEsc = [60, 60, 60];
+      const cinzaClaro = [120, 120, 120];
+      const branco = [255, 255, 255];
+      const nomeStr = nome || 'Não informado';
+      const hoje = new Date().toLocaleDateString('pt-BR');
+
+      doc.setFillColor(...azul);
+      doc.rect(0, 0, 210, 28, 'F');
+      doc.setTextColor(...branco);
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('CÁLCULO DE FGTS PARA FINS PROCESSUAIS', 14, 12);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Art. 15 da Lei nº 8.036/1990 — Alíquota: 8%', 14, 20);
+      doc.text(`Emitido em ${hoje}`, 196, 20, { align: 'right' });
+
+      let y = 38;
+      doc.setTextColor(...cinzaEsc);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('IDENTIFICAÇÃO', 14, y);
+      y += 7;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(...cinzaClaro);
+      doc.text('Trabalhador:', 14, y);
+      doc.setTextColor(...cinzaEsc);
+      doc.text(nomeStr, 55, y);
+      doc.setTextColor(...cinzaClaro);
+      doc.text('Data de emissão:', 120, y);
+      doc.setTextColor(...cinzaEsc);
+      doc.text(hoje, 160, y);
+      y += 12;
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...cinzaEsc);
+      doc.text('RESUMO DO CÁLCULO', 14, y);
+      y += 6;
+
+      const resumo = [
+        ['Remuneração mensal bruta', fmt(sal)],
+        ['FGTS mensal devido (8%)', fmt(fgtsMensal)],
+        ['Quantidade de meses em débito', `${meses} mês${meses > 1 ? 'es' : ''}`],
+        ['TOTAL DE FGTS DEVIDO', fmt(total)],
+      ];
+
+      resumo.forEach(([lbl, val], i) => {
+        const isTotal = i === resumo.length - 1;
+        if (isTotal) {
+          doc.setFillColor(...azul);
+          doc.roundedRect(14, y - 4, 182, 9, 2, 2, 'F');
+          doc.setTextColor(...branco);
+          doc.setFont('helvetica', 'bold');
+        } else {
+          doc.setFillColor(i % 2 === 0 ? 245 : 255, i % 2 === 0 ? 247 : 255, i % 2 === 0 ? 250 : 255);
+          doc.rect(14, y - 4, 182, 9, 'F');
+          doc.setTextColor(...cinzaEsc);
+          doc.setFont('helvetica', 'normal');
+        }
+        doc.setFontSize(9);
+        doc.text(lbl, 18, y + 1);
+        doc.text(val, 192, y + 1, { align: 'right' });
+        y += 10;
+      });
+
+      y += 6;
+      doc.setTextColor(...cinzaEsc);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('DETALHAMENTO POR PERÍODO', 14, y);
+      y += 4;
+
+      doc.autoTable({
+        startY: y,
+        head: [['#', 'Competência', 'Remuneração', 'FGTS (8%)']],
+        body: [
+          ...competencias.map((c, i) => [i + 1, c, fmt(sal), fmt(fgtsMensal)]),
+          ['', 'TOTAL', fmt(sal * meses), fmt(total)]
+        ],
+        styles: { fontSize: 8, cellPadding: 3, textColor: cinzaEsc },
+        headStyles: { fillColor: azul, textColor: branco, fontStyle: 'bold', fontSize: 8 },
+        columnStyles: {
+          0: { cellWidth: 12, halign: 'center' },
+          1: { cellWidth: 70 },
+          2: { cellWidth: 52, halign: 'right' },
+          3: { cellWidth: 48, halign: 'right' }
+        },
+        alternateRowStyles: { fillColor: [245, 247, 250] },
+        didParseCell: (data) => {
+          if (data.row.index === competencias.length) {
+            data.cell.styles.fillColor = azul;
+            data.cell.styles.textColor = branco;
+            data.cell.styles.fontStyle = 'bold';
+          }
+        },
+        margin: { left: 14, right: 14 },
+        tableWidth: 182
+      });
+
+      const finalY = doc.lastAutoTable.finalY + 10;
+      doc.setFillColor(230, 241, 251);
+      doc.roundedRect(14, finalY, 182, 20, 3, 3, 'F');
+      doc.setTextColor(12, 68, 124);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      const texto = `Conforme o art. 15 da Lei nº 8.036/1990, o empregador é obrigado a depositar mensalmente 8% da remuneração paga ao trabalhador. O total de FGTS não depositado no período de ${meses} mês${meses > 1 ? 'es' : ''} é de ${fmt(total)}.`;
+      doc.text(texto, 18, finalY + 8, { maxWidth: 174 });
+
+      const nomeArq = nome ? nome.replace(/\s/g, '_') : 'trabalhador';
+      doc.save(`FGTS_${nomeArq}_${new Date().toISOString().slice(0, 10)}.pdf`);
+    }
+
+    document.getElementById('salInput').addEventListener('keydown', e => { if (e.key === 'Enter') calcular(); });
+    document.getElementById('mesesInput').addEventListener('keydown', e => { if (e.key === 'Enter') calcular(); });
+    document.getElementById('salInput').addEventListener('input', () => { document.getElementById('errMsg').textContent = ''; });
+    document.getElementById('mesesInput').addEventListener('input', () => { document.getElementById('errMsg').textContent = ''; });
+  </script>
+
+</body>
+</html>
