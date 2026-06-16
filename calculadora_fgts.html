@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Calculadora de FGTS — Fins Processuais</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
@@ -17,6 +17,17 @@
       color: #1a1a1a;
       min-height: 100vh;
       padding: 2rem 1rem;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+
+    input, textarea {
+      -webkit-user-select: text;
+      -moz-user-select: text;
+      -ms-user-select: text;
+      user-select: text;
     }
 
     .page-header {
@@ -624,6 +635,53 @@
     document.getElementById('mesesInput').addEventListener('keydown', e => { if (e.key === 'Enter') calcular(); });
     document.getElementById('salInput').addEventListener('input', () => { document.getElementById('errMsg').textContent = ''; });
     document.getElementById('mesesInput').addEventListener('input', () => { document.getElementById('errMsg').textContent = ''; });
+
+    // Proteção: bloquear botão direito
+    document.addEventListener('contextmenu', function(e) { e.preventDefault(); return false; });
+
+    // Proteção: bloquear atalhos de teclado
+    document.addEventListener('keydown', function(e) {
+      // F12
+      if (e.key === 'F12') { e.preventDefault(); return false; }
+      // Ctrl+U (ver código-fonte)
+      if (e.ctrlKey && e.key === 'u') { e.preventDefault(); return false; }
+      // Ctrl+S (salvar página)
+      if (e.ctrlKey && e.key === 's') { e.preventDefault(); return false; }
+      // Ctrl+Shift+I (DevTools)
+      if (e.ctrlKey && e.shiftKey && e.key === 'I') { e.preventDefault(); return false; }
+      // Ctrl+Shift+J (Console)
+      if (e.ctrlKey && e.shiftKey && e.key === 'J') { e.preventDefault(); return false; }
+      // Ctrl+Shift+C (Inspecionar elemento)
+      if (e.ctrlKey && e.shiftKey && e.key === 'C') { e.preventDefault(); return false; }
+      // Ctrl+A (selecionar tudo)
+      if (e.ctrlKey && e.key === 'a') { e.preventDefault(); return false; }
+      // Ctrl+P (imprimir / ver código via print)
+      if (e.ctrlKey && e.key === 'p') { e.preventDefault(); return false; }
+    });
+
+    // Proteção: bloquear seleção de texto
+    document.addEventListener('selectstart', function(e) {
+      if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+        e.preventDefault(); return false;
+      }
+    });
+
+    // Proteção: bloquear arrastar elementos
+    document.addEventListener('dragstart', function(e) { e.preventDefault(); return false; });
+
+    // Proteção: detectar DevTools aberto por tamanho de janela
+    (function detectDevTools() {
+      const threshold = 160;
+      function check() {
+        if (
+          window.outerWidth - window.innerWidth > threshold ||
+          window.outerHeight - window.innerHeight > threshold
+        ) {
+          document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#6b7280;font-size:14px;">🔒 Acesso restrito.</div>';
+        }
+      }
+      setInterval(check, 1000);
+    })();
   </script>
 
 </body>
