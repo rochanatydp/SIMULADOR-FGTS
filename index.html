@@ -3,47 +3,69 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Calculadora de FGTS — Fins Processuais</title>
+  <title>Calculadora FGTS em Atraso</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #f4f5f7;
+      background: #f0f2f5;
       color: #1a1a1a;
       min-height: 100vh;
-      padding: 2rem 1rem;
       -webkit-user-select: none;
       -moz-user-select: none;
-      -ms-user-select: none;
       user-select: none;
     }
+    input, textarea, select { -webkit-user-select: text; user-select: text; }
 
-    input, textarea {
-      -webkit-user-select: text;
-      -moz-user-select: text;
-      -ms-user-select: text;
-      user-select: text;
+    .app-header {
+      background: #185FA5;
+      padding: 1rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
+    .app-header h1 { color: #fff; font-size: 16px; font-weight: 600; }
+    .app-header span { color: rgba(255,255,255,0.65); font-size: 12px; }
 
-    .page-header { max-width: 640px; margin: 0 auto 1.5rem; }
-    .page-header h1 { font-size: 20px; font-weight: 600; color: #0C447C; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
-    .page-header p { font-size: 13px; color: #6b7280; }
+    .tabs-bar {
+      background: #fff;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      padding: 0 1.5rem;
+    }
+    .tab-btn {
+      padding: 14px 20px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #6b7280;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .tab-btn:hover { color: #185FA5; }
+    .tab-btn.active { color: #185FA5; border-bottom-color: #185FA5; font-weight: 600; }
+    .tab-dot { width: 6px; height: 6px; border-radius: 50%; background: #d1d5db; display: inline-block; }
+    .tab-btn.done .tab-dot { background: #22c55e; }
 
-    .wrap { max-width: 640px; margin: 0 auto; }
+    .tab-content { display: none; padding: 1.5rem; max-width: 820px; margin: 0 auto; }
+    .tab-content.active { display: block; }
 
     .card {
       background: #fff;
       border: 1px solid #e5e7eb;
       border-radius: 12px;
-      padding: 1.5rem;
+      padding: 1.25rem;
       margin-bottom: 1rem;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
-
     .card-title {
       font-size: 11px;
       color: #6b7280;
@@ -53,588 +75,1380 @@
       display: flex;
       align-items: center;
       gap: 6px;
+      font-weight: 600;
     }
 
-    .fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    @media (max-width: 480px) { .fields-grid { grid-template-columns: 1fr; } }
-
-    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+    .field:last-child { margin-bottom: 0; }
     .field label { font-size: 12px; color: #6b7280; font-weight: 500; }
-
-    .input-pfx {
+    .input-wrap {
       display: flex;
       align-items: center;
-      gap: 6px;
       border: 1px solid #d1d5db;
       border-radius: 8px;
       background: #f9fafb;
       padding: 0 12px;
       transition: border-color 0.15s, box-shadow 0.15s;
     }
-    .input-pfx:focus-within { border-color: #185FA5; box-shadow: 0 0 0 3px rgba(24,95,165,0.1); }
-    .pfx { font-size: 14px; color: #9ca3af; white-space: nowrap; }
-
+    .input-wrap:focus-within { border-color: #185FA5; box-shadow: 0 0 0 3px rgba(24,95,165,0.1); background: #fff; }
+    .input-pfx { font-size: 13px; color: #9ca3af; margin-right: 6px; }
     .finput {
-      flex: 1;
-      font-size: 16px;
-      font-weight: 500;
-      padding: 10px 0;
-      border: none;
-      background: transparent;
-      color: #1a1a1a;
-      outline: none;
-      width: 100%;
+      flex: 1; font-size: 14px; font-weight: 500;
+      padding: 10px 0; border: none; background: transparent;
+      color: #1a1a1a; outline: none; width: 100%;
     }
-
-    .input-full {
-      width: 100%;
-      font-size: 14px;
-      padding: 10px 12px;
-      border: 1px solid #d1d5db;
-      border-radius: 8px;
-      background: #f9fafb;
-      color: #1a1a1a;
-      outline: none;
-      transition: border-color 0.15s, box-shadow 0.15s;
+    .input-plain {
+      width: 100%; font-size: 14px; padding: 10px 12px;
+      border: 1px solid #d1d5db; border-radius: 8px;
+      background: #f9fafb; color: #1a1a1a; outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s; font-weight: 500;
     }
-    .input-full:focus { border-color: #185FA5; box-shadow: 0 0 0 3px rgba(24,95,165,0.1); }
+    .input-plain:focus { border-color: #185FA5; box-shadow: 0 0 0 3px rgba(24,95,165,0.1); background: #fff; }
 
-    .badge-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
-    .badge, .mbtn {
-      font-size: 11px;
-      padding: 3px 9px;
-      border-radius: 6px;
-      background: #f3f4f6;
-      border: 1px solid #e5e7eb;
-      color: #6b7280;
-      cursor: pointer;
-      transition: background 0.12s;
+    .fields-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media(max-width:500px) { .fields-2 { grid-template-columns: 1fr; } }
+
+    .badge-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+    .badge { font-size: 11px; padding: 3px 9px; border-radius: 6px; background: #f3f4f6; border: 1px solid #e5e7eb; color: #6b7280; cursor: pointer; transition: background 0.12s; }
+    .badge:hover { background: #e5e7eb; }
+
+    .comp-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+    .comp-item {
+      display: flex; align-items: center; gap: 10px;
+      background: #f9fafb; border: 1px solid #e5e7eb;
+      border-radius: 8px; padding: 8px 12px;
     }
-    .badge:hover, .mbtn:hover { background: #e5e7eb; }
-
-    .nome-field { margin-top: 14px; }
-    .error { font-size: 12px; color: #dc2626; margin-top: 8px; min-height: 16px; }
-
-    .calc-btn {
-      width: 100%;
-      margin-top: 1.25rem;
-      padding: 13px;
-      font-size: 15px;
-      font-weight: 600;
-      background: #185FA5;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: background 0.15s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
+    .comp-mes { font-size: 13px; font-weight: 500; color: #374151; min-width: 130px; }
+    .comp-input {
+      flex: 1; font-size: 13px; font-weight: 500;
+      padding: 6px 8px; border: 1px solid #d1d5db;
+      border-radius: 6px; background: #fff; color: #1a1a1a; outline: none;
+      -webkit-user-select: text; user-select: text;
     }
-    .calc-btn:hover { background: #0C447C; }
-
-    .hidden { display: none !important; }
-
-    .result-hero {
-      background: #EFF6FF;
-      border: 1px solid #BFDBFE;
-      border-radius: 10px;
-      padding: 1.25rem;
+    .comp-input:focus { border-color: #185FA5; }
+    .comp-label-fgts { font-size: 11px; color: #9ca3af; min-width: 80px; text-align: right; }
+    .comp-remove {
+      width: 26px; height: 26px; border: none; background: #fee2e2;
+      border-radius: 6px; cursor: pointer; color: #dc2626; font-size: 13px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
-    .result-lbl { font-size: 11px; color: #3B82F6; margin-bottom: 4px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
-    .result-val { font-size: 32px; font-weight: 700; color: #0C447C; }
-    .result-sub { font-size: 12px; color: #6b7280; margin-top: 4px; }
+    .comp-remove:hover { background: #fecaca; }
 
-    .divider { border: none; border-top: 1px solid #f3f4f6; margin: 1.25rem 0; }
-
-    .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1rem; }
-    @media (max-width: 480px) { .metrics { grid-template-columns: 1fr 1fr; } }
-
-    .metric { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 0.75rem; }
-    .metric-val { font-size: 15px; font-weight: 600; color: #1a1a1a; }
-    .metric-lbl { font-size: 11px; color: #9ca3af; margin-top: 3px; line-height: 1.4; }
-
-    .table-scroll {
-      max-height: 240px;
-      overflow-y: auto;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      margin-top: 0.5rem;
+    .btn-primary {
+      width: 100%; padding: 12px; font-size: 14px; font-weight: 600;
+      background: #185FA5; color: #fff; border: none; border-radius: 8px;
+      cursor: pointer; transition: background 0.15s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
     }
-
-    .period-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    .period-table th {
-      font-size: 11px;
-      color: #6b7280;
-      font-weight: 600;
-      text-align: left;
-      padding: 8px 10px;
-      border-bottom: 1px solid #e5e7eb;
-      background: #f9fafb;
-      position: sticky;
-      top: 0;
+    .btn-primary:hover { background: #0C447C; }
+    .btn-secondary {
+      width: 100%; padding: 10px; font-size: 13px; font-weight: 500;
+      background: #fff; color: #374151; border: 1px solid #d1d5db;
+      border-radius: 8px; cursor: pointer; transition: background 0.12s;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
     }
-    .period-table td { padding: 8px 10px; border-bottom: 1px solid #f3f4f6; color: #1a1a1a; }
-    .period-table tbody tr:hover { background: #f9fafb; }
-    .period-table tfoot td {
-      font-weight: 600;
-      background: #EFF6FF;
-      color: #0C447C;
-      border-top: 1px solid #BFDBFE;
-      border-bottom: none;
-    }
-    .period-table td:last-child, .period-table th:last-child { text-align: right; }
-    .period-table td:first-child { color: #9ca3af; }
+    .btn-secondary:hover { background: #f3f4f6; }
 
+    .error { font-size: 12px; color: #dc2626; margin-top: 6px; min-height: 16px; }
     .info-box {
-      background: #EFF6FF;
-      border-left: 3px solid #185FA5;
-      border-radius: 0 8px 8px 0;
-      padding: 0.75rem 1rem;
-      font-size: 13px;
-      color: #0C447C;
-      line-height: 1.6;
-      margin-top: 1rem;
+      background: #EFF6FF; border-left: 3px solid #185FA5;
+      border-radius: 0 8px 8px 0; padding: 10px 14px;
+      font-size: 12px; color: #0C447C; line-height: 1.6; margin-bottom: 1rem;
+    }
+    .warn-box {
+      background: #FFF8E1; border: 1px solid #FDD835; border-radius: 8px;
+      padding: 8px 12px; font-size: 12px; color: #7B5800; margin-bottom: 12px;
+    }
+
+    /* RESULTADO */
+    .result-hero {
+      background: #185FA5; border-radius: 12px; padding: 1.25rem;
+      margin-bottom: 1rem; color: #fff;
+    }
+    .result-hero-lbl { font-size: 11px; color: rgba(255,255,255,0.75); margin-bottom: 4px; }
+    .result-hero-val { font-size: 32px; font-weight: 700; }
+    .result-hero-sub { font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 4px; }
+
+    .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 1rem; }
+    @media(max-width:600px) { .metrics { grid-template-columns: 1fr 1fr; } }
+    .metric { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 0.85rem; text-align: center; }
+    .metric-val { font-size: 16px; font-weight: 700; color: #185FA5; }
+    .metric-lbl { font-size: 10px; color: #9ca3af; margin-top: 3px; line-height: 1.4; }
+
+    .table-wrap { overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 10px; margin-bottom: 1rem; }
+    .result-table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 640px; }
+    .result-table th {
+      background: #f9fafb; color: #6b7280; font-weight: 600;
+      font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em;
+      padding: 10px 12px; border-bottom: 1px solid #e5e7eb;
+      text-align: left; white-space: nowrap;
+    }
+    .result-table td { padding: 9px 12px; border-bottom: 1px solid #f3f4f6; color: #374151; }
+    .result-table tbody tr:hover { background: #fafafa; }
+    .result-table td.num { text-align: right; font-weight: 500; }
+    .result-table td.center { text-align: center; }
+    .result-table tfoot td { background: #EFF6FF; font-weight: 700; color: #0C447C; border-top: 2px solid #BFDBFE; }
+    .result-table tfoot td.num { color: #185FA5; }
+    .tag-atencao { background: #fee2e2; color: #dc2626; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+    .tag-ok { background: #dcfce7; color: #166534; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+
+    /* FUNCIONÁRIO */
+    .func-item-card {
+      border: 1px solid #e5e7eb; border-radius: 10px;
+      padding: 1rem; margin-bottom: 10px; background: #f9fafb;
+    }
+    .func-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .func-nome-badge { font-size: 13px; font-weight: 600; color: #185FA5; }
+    .func-remove-btn {
+      font-size: 11px; padding: 3px 10px; border: 1px solid #fecaca;
+      border-radius: 6px; background: #fee2e2; color: #dc2626; cursor: pointer;
+    }
+    .func-section-title {
+      font-size: 13px; font-weight: 600; color: #185FA5;
+      padding: 8px 12px; background: #EFF6FF; border-radius: 8px;
+      margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
     }
 
     .export-row { display: flex; gap: 10px; margin-top: 1rem; }
-    @media (max-width: 400px) { .export-row { flex-direction: column; } }
-
+    @media(max-width:400px) { .export-row { flex-direction: column; } }
     .exp-btn {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 12px;
-      font-size: 13px;
-      font-weight: 600;
-      border-radius: 8px;
-      cursor: pointer;
-      border: 1px solid transparent;
-      transition: all 0.12s;
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      gap: 8px; padding: 11px; font-size: 13px; font-weight: 600;
+      border-radius: 8px; cursor: pointer; border: 1px solid transparent;
     }
     .pdf-btn { background: #FEF2F2; border-color: #FECACA; color: #991B1B; }
     .pdf-btn:hover { background: #FEE2E2; }
     .xls-btn { background: #F0FDF4; border-color: #BBF7D0; color: #166534; }
     .xls-btn:hover { background: #DCFCE7; }
 
-    svg.icon { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+    .divider { border: none; border-top: 1px solid #f3f4f6; margin: 1rem 0; }
+    .empty-state { text-align: center; padding: 2.5rem; color: #9ca3af; font-size: 13px; }
+    svg.icon { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
 
-    .footer-note {
-      text-align: center;
-      font-size: 11px;
-      color: #9ca3af;
-      margin-top: 1.5rem;
-      padding-bottom: 1rem;
-    }
+    .section-sep { font-size: 11px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.07em; margin: 1.25rem 0 0.75rem; display: flex; align-items: center; gap: 8px; }
+    .section-sep::after { content:''; flex:1; height:1px; background:#e5e7eb; }
   </style>
 </head>
 <body>
 
-  <div class="page-header">
-    <h1>
-      <svg class="icon" style="width:20px;height:20px" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><line x1="3" y1="21" x2="21" y2="21"/><path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10h-18v-10z"/><path d="M9 21v-4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4"/></svg>
-      Calculadora de FGTS — Fins Processuais
-    </h1>
-    <p>Calcule o FGTS devido com base na remuneração e quantidade de meses em débito</p>
+<div class="app-header">
+  <svg class="icon" style="width:20px;height:20px;stroke:#fff" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+  <div>
+    <h1>Provisão FGTS em Atraso</h1>
+    <span>Cálculo com JAM, juros e multa — art. 15 Lei nº 8.036/1990</span>
+  </div>
+</div>
+
+<div class="tabs-bar">
+  <button class="tab-btn active" onclick="showTab('empresa')" id="tab-empresa">
+    <span class="tab-dot" id="dot-empresa"></span> Empresa
+  </button>
+  <button class="tab-btn" onclick="showTab('funcionario')" id="tab-funcionario">
+    <span class="tab-dot" id="dot-funcionario"></span> Por Funcionário
+  </button>
+  <button class="tab-btn" onclick="showTab('resultado')" id="tab-resultado">
+    <span class="tab-dot" id="dot-resultado"></span> Resultado
+  </button>
+</div>
+
+<!-- ========== ABA EMPRESA ========== -->
+<div class="tab-content active" id="content-empresa">
+
+  <div class="card">
+    <div class="card-title">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-4h6v4"/></svg>
+      Dados da Empresa
+    </div>
+    <div class="fields-2">
+      <div class="field">
+        <label>Nome da Empresa</label>
+        <input class="input-plain" id="emp-nome" type="text" placeholder="Ex.: Empresa XYZ Ltda" />
+      </div>
+      <div class="field">
+        <label>CNPJ (opcional)</label>
+        <input class="input-plain" id="emp-cnpj" type="text" placeholder="00.000.000/0001-00" />
+      </div>
+    </div>
   </div>
 
-  <div class="wrap">
+  <div class="card">
+    <div class="card-title">
+      <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Competências em Atraso
+    </div>
 
-    <div class="card">
-      <div class="card-title">
-        <svg class="icon" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="16" y2="11"/><line x1="8" y1="15" x2="12" y2="15"/></svg>
-        Dados para cálculo
+    <div class="warn-box">
+      📌 Informe as <strong>competências</strong> (mês trabalhado) e a <strong>base de cálculo</strong> de cada mês. O FGTS (8%), JAM, juros e multa serão calculados automaticamente. Vencimento: dia 20 do mês seguinte à competência.
+    </div>
+
+    <div class="fields-2" style="margin-bottom:10px">
+      <div class="field">
+        <label>Competência inicial (mês trabalhado)</label>
+        <input class="input-plain" id="comp-inicio" type="month" />
       </div>
-
-      <div class="fields-grid">
-        <div class="field">
-          <label>Remuneração mensal bruta</label>
-          <div class="input-pfx">
-            <span class="pfx">R$</span>
-            <input class="finput" id="salInput" type="text" placeholder="0,00" inputmode="decimal" autocomplete="off" />
-          </div>
-          <div class="badge-row">
-            <span class="badge" onclick="setSal(1412)">SM R$1.412</span>
-            <span class="badge" onclick="setSal(3000)">R$3.000</span>
-            <span class="badge" onclick="setSal(5000)">R$5.000</span>
-            <span class="badge" onclick="setSal(8000)">R$8.000</span>
-          </div>
-        </div>
-
-        <div class="field">
-          <label>Quantidade de meses em débito</label>
-          <div class="input-pfx">
-            <input class="finput" id="mesesInput" type="number" min="1" max="120" placeholder="0" style="text-align:center;" />
-            <span class="pfx">meses</span>
-          </div>
-          <div class="badge-row">
-            <span class="mbtn" onclick="setMeses(1)">1</span>
-            <span class="mbtn" onclick="setMeses(3)">3</span>
-            <span class="mbtn" onclick="setMeses(6)">6</span>
-            <span class="mbtn" onclick="setMeses(12)">12</span>
-            <span class="mbtn" onclick="setMeses(24)">24</span>
-            <span class="mbtn" onclick="setMeses(36)">36</span>
-          </div>
-        </div>
+      <div class="field">
+        <label>Competência final (mês trabalhado)</label>
+        <input class="input-plain" id="comp-fim" type="month" />
       </div>
+    </div>
+    <button class="btn-secondary" onclick="gerarCompetencias()" style="margin-bottom:12px">
+      <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Gerar período automaticamente
+    </button>
 
-      <div class="nome-field">
-        <div class="field">
-          <label>Nome do trabalhador (opcional)</label>
-          <input class="input-full" id="nomeInput" type="text" placeholder="Ex.: João da Silva" />
-        </div>
-      </div>
+    <div id="comp-lista" class="comp-list"></div>
+    <div id="err-empresa" class="error"></div>
 
-      <div id="errMsg" class="error"></div>
-
-      <button class="calc-btn" onclick="calcular()">
-        <svg class="icon" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="11" y2="14"/><line x1="8" y1="18" x2="11" y2="18"/><path d="M15 15l2 2l4-4"/></svg>
-        Calcular FGTS devido
+    <div style="margin-top:14px">
+      <button class="btn-primary" onclick="calcularEmpresa()">
+        <svg class="icon" style="stroke:#fff" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Calcular e ver Resultado
       </button>
     </div>
+  </div>
 
-    <div class="card hidden" id="resultCard">
-      <div class="result-hero">
-        <div class="result-lbl">Total de FGTS devido no período</div>
-        <div class="result-val" id="rTotal">R$ 0,00</div>
-        <div class="result-sub" id="rSub">—</div>
+</div>
+
+<!-- ========== ABA FUNCIONÁRIO ========== -->
+<div class="tab-content" id="content-funcionario">
+
+  <div class="info-box">
+    <strong>Cálculo individual por funcionário.</strong> Use esta aba quando quiser ver o detalhamento de um funcionário específico, com nome e dados pessoais no relatório.
+  </div>
+
+  <div class="card">
+    <div class="card-title">
+      <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      Dados do Funcionário
+    </div>
+    <div class="fields-2">
+      <div class="field">
+        <label>Nome do Funcionário</label>
+        <input class="input-plain" id="func-nome" type="text" placeholder="Ex.: João da Silva" />
       </div>
+      <div class="field">
+        <label>PIS/NIS (opcional)</label>
+        <input class="input-plain" id="func-pis" type="text" placeholder="000.00000.00-0" />
+      </div>
+    </div>
+    <div class="fields-2">
+      <div class="field">
+        <label>Data de Admissão (opcional)</label>
+        <input class="input-plain" id="func-admissao" type="date" />
+      </div>
+    </div>
+  </div>
 
-      <hr class="divider">
+  <div class="card">
+    <div class="card-title">
+      <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Competências em Atraso
+    </div>
 
-      <div class="metrics">
-        <div class="metric">
-          <div class="metric-val" id="mSal">—</div>
-          <div class="metric-lbl">Remuneração mensal</div>
+    <div class="warn-box">
+      📌 Informe a <strong>base de cálculo (salário bruto)</strong> de cada mês. O FGTS (8%) é calculado automaticamente.
+    </div>
+
+    <div class="fields-2" style="margin-bottom:10px">
+      <div class="field">
+        <label>Competência inicial</label>
+        <input class="input-plain" id="func-comp-inicio" type="month" />
+      </div>
+      <div class="field">
+        <label>Competência final</label>
+        <input class="input-plain" id="func-comp-fim" type="month" />
+      </div>
+    </div>
+    <button class="btn-secondary" onclick="gerarCompetenciasFuncionario()" style="margin-bottom:12px">
+      <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Gerar período automaticamente
+    </button>
+
+    <div id="func-comp-lista" class="comp-list"></div>
+    <div id="err-func" class="error"></div>
+
+    <div style="margin-top:14px">
+      <button class="btn-primary" onclick="calcularFuncionario()">
+        <svg class="icon" style="stroke:#fff" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Calcular Funcionário
+      </button>
+    </div>
+  </div>
+
+  <!-- lista de funcionários calculados -->
+  <div id="lista-funcionarios-calc"></div>
+
+</div>
+
+<!-- ========== ABA RESULTADO ========== -->
+<div class="tab-content" id="content-resultado">
+  <div id="resultado-conteudo">
+    <div class="empty-state">
+      <svg class="icon" style="width:36px;height:36px;stroke:#d1d5db;margin:0 auto 1rem;display:block" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <p>Preencha os dados na aba <strong>Empresa</strong> e clique em Calcular.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===================== ESTADO =====================
+let dadosEmpresa = { nome:'', cnpj:'', competencias:[] };
+let dadosFuncionarios = [];
+
+// ===================== TABS =====================
+function showTab(id) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('content-' + id).classList.add('active');
+  document.getElementById('tab-' + id).classList.add('active');
+}
+
+// ===================== UTILS =====================
+function fmt(n) { return (n||0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' }); }
+function parseBRL(s) {
+  if (!s) return 0;
+  return parseFloat(String(s).replace(/\s/g,'').replace(/R\$\s?/g,'').replace(/\./g,'').replace(',','.')) || 0;
+}
+function mesLabel(mes) {
+  const [y,m] = mes.split('-').map(Number);
+  const d = new Date(y, m-1, 1);
+  const l = d.toLocaleDateString('pt-BR', {month:'long', year:'numeric'});
+  return l.charAt(0).toUpperCase() + l.slice(1);
+}
+function vencimentoOriginal(mes) {
+  // Competência jan/2024 → vencimento 20/02/2024
+  const [y, m] = mes.split('-').map(Number);
+  const mv = m + 1 > 12 ? 1 : m + 1;
+  const yv = m + 1 > 12 ? y + 1 : y;
+  return new Date(yv, mv - 1, 20);
+}
+function mesesAtraso(mes) {
+  const hoje = new Date();
+  const venc = vencimentoOriginal(mes);
+  let meses = (hoje.getFullYear() - venc.getFullYear()) * 12 + (hoje.getMonth() - venc.getMonth());
+  if (hoje.getDate() < venc.getDate()) meses--;
+  return Math.max(0, meses);
+}
+const TABELA_JAM = {
+  "1970-03": 0.068828,
+  "1970-06": 0.062692,
+  "1970-09": 0.042008,
+  "1970-12": 0.038248,
+  "1971-03": 0.068868,
+  "1971-06": 0.049986,
+  "1971-09": 0.0542,
+  "1971-12": 0.072069,
+  "1972-03": 0.057523,
+  "1972-06": 0.045003,
+  "1972-10": 0.056762,
+  "1973-01": 0.037907,
+  "1973-12": 0.16325,
+  "1974-12": 0.347849,
+  "1976-01": 0.270569,
+  "1976-04": 0.074747,
+  "1976-07": 0.095047,
+  "1976-10": 0.096976,
+  "1977-01": 0.099194,
+  "1977-04": 0.068833,
+  "1977-07": 0.105597,
+  "1977-10": 0.07041,
+  "1978-01": 0.057043,
+  "1978-04": 0.079748,
+  "1978-07": 0.100712,
+  "1978-10": 0.095057,
+  "1979-01": 0.085664,
+  "1979-04": 0.08053,
+  "1979-07": 0.121297,
+  "1979-10": 0.107449,
+  "1980-01": 0.146196,
+  "1980-04": 0.128958,
+  "1980-07": 0.114859,
+  "1980-10": 0.10522,
+  "1981-01": 0.121283,
+  "1981-04": 0.197622,
+  "1981-07": 0.199943,
+  "1981-10": 0.194297,
+  "1982-01": 0.181924,
+  "1982-04": 0.166307,
+  "1982-07": 0.183047,
+  "1982-10": 0.222691,
+  "1983-01": 0.222723,
+  "1983-04": 0.242058,
+  "1983-07": 0.27854,
+  "1983-10": 0.304711,
+  "1984-01": 0.28912,
+  "1984-04": 0.366534,
+  "1984-07": 0.304738,
+  "1984-10": 0.358088,
+  "1985-01": 0.377697,
+  "1985-04": 0.408928,
+  "1985-07": 0.353542,
+  "1985-10": 0.279629,
+  "1986-01": 0.383322,
+  "1986-03": 0.339169,
+  "1986-06": 0.025882,
+  "1986-09": 0.04978,
+  "1986-12": 0.078657,
+  "1987-03": 0.510075,
+  "1987-06": 0.722732,
+  "1987-09": 0.385779,
+  "1987-12": 0.333697,
+  "1988-03": 0.580458,
+  "1988-06": 0.64202,
+  "1988-09": 0.802378,
+  "1988-12": 1.017847,
+  "1989-03": 0.879083,
+  "1989-06": 0.472621,
+  "1989-09": 1.094487,
+  "1989-11": 0.880181,
+  "1989-12": 0.417687,
+  "1990-01": 0.539286,
+  "1990-02": 0.56495,
+  "1990-03": 0.732061,
+  "1990-04": 0.847745,
+  "1990-05": 0.002466,
+  "1990-06": 0.056398,
+  "1990-07": 0.098803,
+  "1990-08": 0.110632,
+  "1990-09": 0.108527,
+  "1990-10": 0.131283,
+  "1990-11": 0.139904,
+  "1990-12": 0.169276,
+  "1991-01": 0.196844,
+  "1991-02": 0.205065,
+  "1991-03": 0.072638,
+  "1991-04": 0.087675,
+  "1991-05": 0.091986,
+  "1991-06": 0.023303,
+  "1991-07": 0.103706,
+  "1991-08": 0.109904,
+  "1991-09": 0.132305,
+  "1991-10": 0.181512,
+  "1991-11": 0.232112,
+  "1991-12": 0.30239,
+  "1992-01": 0.275161,
+  "1992-02": 0.248146,
+  "1992-03": 0.243984,
+  "1992-04": 0.28134,
+  "1992-05": 0.182213,
+  "1992-06": 0.223273,
+  "1992-07": 0.213152,
+  "1992-08": 0.220777,
+  "1992-09": 0.253974,
+  "1992-10": 0.272149,
+  "1992-11": 0.226821,
+  "1992-12": 0.252445,
+  "1993-01": 0.230599,
+  "1993-02": 0.315467,
+  "1993-03": 0.239518,
+  "1993-04": 0.252998,
+  "1993-05": 0.280364,
+  "1993-06": 0.318443,
+  "1993-07": 0.295787,
+  "1993-08": 0.294384,
+  "1993-09": 0.340197,
+  "1993-10": 0.363053,
+  "1993-11": 0.366461,
+  "1993-12": 0.364657,
+  "1994-01": 0.360346,
+  "1994-02": 0.490466,
+  "1994-03": 0.36576,
+  "1994-04": 0.413978,
+  "1994-05": 0.466407,
+  "1994-06": 0.493975,
+  "1994-07": 0.340692,
+  "1994-08": 0.044606,
+  "1994-09": 0.023573,
+  "1994-10": 0.026463,
+  "1994-11": 0.030745,
+  "1994-12": 0.034649,
+  "1995-01": 0.023948,
+  "1995-02": 0.026845,
+  "1995-03": 0.019083,
+  "1995-04": 0.042855,
+  "1995-05": 0.035718,
+  "1995-06": 0.036461,
+  "1995-07": 0.028936,
+  "1995-08": 0.034847,
+  "1995-09": 0.023356,
+  "1995-10": 0.021814,
+  "1995-11": 0.019047,
+  "1995-12": 0.016888,
+  "1996-01": 0.015899,
+  "1996-02": 0.015023,
+  "1996-03": 0.012115,
+  "1996-04": 0.010625,
+  "1996-05": 0.009079,
+  "1996-06": 0.008368,
+  "1996-07": 0.00858,
+  "1996-08": 0.008331,
+  "1996-09": 0.008756,
+  "1996-10": 0.009102,
+  "1996-11": 0.009903,
+  "1996-12": 0.010632,
+  "1997-01": 0.011204,
+  "1997-02": 0.009924,
+  "1997-03": 0.009098,
+  "1997-04": 0.008797,
+  "1997-05": 0.008692,
+  "1997-06": 0.008835,
+  "1997-07": 0.009017,
+  "1997-08": 0.009062,
+  "1997-09": 0.008751,
+  "1997-10": 0.008956,
+  "1997-11": 0.009035,
+  "1997-12": 0.017838,
+  "1998-01": 0.015583,
+  "1998-02": 0.013953,
+  "1998-03": 0.006938,
+  "1998-04": 0.011483,
+  "1998-05": 0.007197,
+  "1998-06": 0.00702,
+  "1998-07": 0.007391,
+  "1998-08": 0.007982,
+  "1998-09": 0.006224,
+  "1998-10": 0.006989,
+  "1998-11": 0.01138,
+  "1998-12": 0.008617,
+  "1999-01": 0.009918,
+  "1999-02": 0.007641,
+  "1999-03": 0.010784,
+  "1999-04": 0.014108,
+  "1999-05": 0.008573,
+  "1999-06": 0.008241,
+  "1999-07": 0.005581,
+  "1999-08": 0.005406,
+  "1999-09": 0.005418,
+  "1999-10": 0.005187,
+  "1999-11": 0.004736,
+  "1999-12": 0.004469,
+  "2000-01": 0.005471,
+  "2000-02": 0.00462,
+  "2000-03": 0.0048,
+  "2000-04": 0.004713,
+  "2000-05": 0.00377,
+  "2000-06": 0.004964,
+  "2000-07": 0.004611,
+  "2000-08": 0.004017,
+  "2000-09": 0.004496,
+  "2000-10": 0.003506,
+  "2000-11": 0.003785,
+  "2000-12": 0.003666,
+  "2001-01": 0.003459,
+  "2001-02": 0.003838,
+  "2001-03": 0.002835,
+  "2001-04": 0.004194,
+  "2001-05": 0.004016,
+  "2001-06": 0.004297,
+  "2001-07": 0.003927,
+  "2001-08": 0.004913,
+  "2001-09": 0.00591,
+  "2001-10": 0.004097,
+  "2001-11": 0.005386,
+  "2001-12": 0.004399,
+  "2002-01": 0.004454,
+  "2002-02": 0.005063,
+  "2002-03": 0.00364,
+  "2002-04": 0.004228,
+  "2002-05": 0.004829,
+  "2002-06": 0.004573,
+  "2002-07": 0.004052,
+  "2002-08": 0.005128,
+  "2002-09": 0.004953,
+  "2002-10": 0.004426,
+  "2002-11": 0.005241,
+  "2002-12": 0.005116,
+  "2003-01": 0.006084,
+  "2003-02": 0.007356,
+  "2003-03": 0.006592,
+  "2003-04": 0.006257,
+  "2003-05": 0.00666,
+  "2003-06": 0.007127,
+  "2003-07": 0.006642,
+  "2003-08": 0.007944,
+  "2003-09": 0.006514,
+  "2003-10": 0.005838,
+  "2003-11": 0.005687,
+  "2003-12": 0.004246,
+  "2004-01": 0.004369,
+  "2004-02": 0.003749,
+  "2004-03": 0.002925,
+  "2004-04": 0.004248,
+  "2004-05": 0.003342,
+  "2004-06": 0.004016,
+  "2004-07": 0.004231,
+  "2004-08": 0.004423,
+  "2004-09": 0.004476,
+  "2004-10": 0.004198,
+  "2004-11": 0.003576,
+  "2004-12": 0.003615,
+  "2005-01": 0.004872,
+  "2005-02": 0.00435,
+  "2005-03": 0.00343,
+  "2005-04": 0.005107,
+  "2005-05": 0.004474,
+  "2005-06": 0.004999,
+  "2005-07": 0.005466,
+  "2005-08": 0.005047,
+  "2005-09": 0.00594,
+  "2005-10": 0.005109,
+  "2005-11": 0.004571,
+  "2005-12": 0.0044,
+  "2006-01": 0.00474,
+  "2006-02": 0.004797,
+  "2006-03": 0.003193,
+  "2006-04": 0.004544,
+  "2006-05": 0.003323,
+  "2006-06": 0.004358,
+  "2006-07": 0.004408,
+  "2006-08": 0.004221,
+  "2006-09": 0.004908,
+  "2006-10": 0.003991,
+  "2006-11": 0.004345,
+  "2006-12": 0.003751,
+  "2007-01": 0.003992,
+  "2007-02": 0.00466,
+  "2007-03": 0.003189,
+  "2007-04": 0.004346,
+  "2007-05": 0.003741,
+  "2007-06": 0.004159,
+  "2007-07": 0.003422,
+  "2007-08": 0.003938,
+  "2007-09": 0.003935,
+  "2007-10": 0.002819,
+  "2007-11": 0.003611,
+  "2007-12": 0.003057,
+  "2008-01": 0.003107,
+  "2008-02": 0.003478,
+  "2008-03": 0.002709,
+  "2008-04": 0.002876,
+  "2008-05": 0.003423,
+  "2008-06": 0.003204,
+  "2008-07": 0.003615,
+  "2008-08": 0.004384,
+  "2008-09": 0.004044,
+  "2008-10": 0.004441,
+  "2008-11": 0.004978,
+  "2008-12": 0.004088,
+  "2009-01": 0.00462,
+  "2009-02": 0.00431,
+  "2009-03": 0.002918,
+  "2009-04": 0.003907,
+  "2009-05": 0.002921,
+  "2009-06": 0.002916,
+  "2009-07": 0.003123,
+  "2009-08": 0.003519,
+  "2009-09": 0.002663,
+  "2009-10": 0.002466,
+  "2009-11": 0.002466,
+  "2009-12": 0.002466,
+  "2010-01": 0.003,
+  "2010-02": 0.002466,
+  "2010-03": 0.002466,
+  "2010-04": 0.00326,
+  "2010-05": 0.002466,
+  "2010-06": 0.002977,
+  "2010-07": 0.003056,
+  "2010-08": 0.00362,
+  "2010-09": 0.003377,
+  "2010-10": 0.003169,
+  "2010-11": 0.002939,
+  "2010-12": 0.002803,
+  "2011-01": 0.003875,
+  "2011-02": 0.003183,
+  "2011-03": 0.002991,
+  "2011-04": 0.003681,
+  "2011-05": 0.002836,
+  "2011-06": 0.00404,
+  "2011-07": 0.003583,
+  "2011-08": 0.003698,
+  "2011-09": 0.004547,
+  "2011-10": 0.003471,
+  "2011-11": 0.003087,
+  "2011-12": 0.003112,
+  "2012-01": 0.003405,
+  "2012-02": 0.003332,
+  "2012-03": 0.002466,
+  "2012-04": 0.003536,
+  "2012-05": 0.002693,
+  "2012-06": 0.002935,
+  "2012-07": 0.002466,
+  "2012-08": 0.00261,
+  "2012-09": 0.002589,
+  "2012-10": 0.002466,
+  "2012-11": 0.002466,
+  "2012-12": 0.002466,
+  "2013-01": 0.002466,
+  "2013-02": 0.002466,
+  "2013-03": 0.002466,
+  "2013-04": 0.002466,
+  "2013-05": 0.002466,
+  "2013-06": 0.002466,
+  "2013-07": 0.002466,
+  "2013-08": 0.002675,
+  "2013-09": 0.002466,
+  "2013-10": 0.002545,
+  "2013-11": 0.003388,
+  "2013-12": 0.002673,
+  "2014-01": 0.002961,
+  "2014-02": 0.003595,
+  "2014-03": 0.003004,
+  "2014-04": 0.002732,
+  "2014-05": 0.002926,
+  "2014-06": 0.003071,
+  "2014-07": 0.002932,
+  "2014-08": 0.003522,
+  "2014-09": 0.003069,
+  "2014-10": 0.003341,
+  "2014-11": 0.003506,
+  "2014-12": 0.00295,
+  "2015-01": 0.003521,
+  "2015-02": 0.003346,
+  "2015-03": 0.002634,
+  "2015-04": 0.003765,
+  "2015-05": 0.003542,
+  "2015-06": 0.003622,
+  "2015-07": 0.004283,
+  "2015-08": 0.004776,
+  "2015-09": 0.004337,
+  "2015-10": 0.00439,
+  "2015-11": 0.00426,
+  "2015-12": 0.003766,
+  "2016-01": 0.004721,
+  "2016-02": 0.003789,
+  "2016-03": 0.003425,
+  "2016-04": 0.004639,
+  "2016-05": 0.003773,
+  "2016-06": 0.004003,
+  "2016-07": 0.004514,
+  "2016-08": 0.004091,
+  "2016-09": 0.005017,
+  "2016-10": 0.004045,
+  "2016-11": 0.004071,
+  "2016-12": 0.003897,
+  "2017-01": 0.004319,
+  "2017-02": 0.00417,
+  "2017-03": 0.002769,
+  "2017-04": 0.003989,
+  "2017-05": 0.002466,
+  "2017-06": 0.003232,
+  "2017-07": 0.003003,
+  "2017-08": 0.00309,
+  "2017-09": 0.002976,
+  "2017-10": 0.002466,
+  "2017-11": 0.002466,
+  "2017-12": 0.002466,
+  "2018-01": 0.002466,
+  "2018-02": 0.002466,
+  "2018-03": 0.002466,
+  "2018-04": 0.002466,
+  "2018-05": 0.002466,
+  "2018-06": 0.002466,
+  "2018-07": 0.002466,
+  "2018-08": 0.002466,
+  "2018-09": 0.002466,
+  "2018-10": 0.002466,
+  "2018-11": 0.002466,
+  "2018-12": 0.002466,
+  "2019-01": 0.002466,
+  "2019-02": 0.002466,
+  "2019-03": 0.002466,
+  "2019-04": 0.002466,
+  "2019-05": 0.002466,
+  "2019-06": 0.002466,
+  "2019-07": 0.002466,
+  "2019-08": 0.002466,
+  "2019-09": 0.002466,
+  "2019-10": 0.002466,
+  "2019-11": 0.002466,
+  "2019-12": 0.002466,
+  "2020-01": 0.002466,
+  "2020-02": 0.002466,
+  "2020-03": 0.002466,
+  "2020-04": 0.002466,
+  "2020-05": 0.002466,
+  "2020-06": 0.002466,
+  "2020-07": 0.002466,
+  "2020-08": 0.002466,
+  "2020-09": 0.002466,
+  "2020-10": 0.002466,
+  "2020-11": 0.002466,
+  "2020-12": 0.002466,
+  "2021-01": 0.002466,
+  "2021-02": 0.002466,
+  "2021-03": 0.002466,
+  "2021-04": 0.002466,
+  "2021-05": 0.002466,
+  "2021-06": 0.002466,
+  "2021-07": 0.002466,
+  "2021-08": 0.002466,
+  "2021-09": 0.002466,
+  "2021-10": 0.002466,
+  "2021-11": 0.002466,
+  "2021-12": 0.002466,
+  "2022-01": 0.002955,
+  "2022-02": 0.003072,
+  "2022-03": 0.002466,
+  "2022-04": 0.003439,
+  "2022-05": 0.003022,
+  "2022-06": 0.004133,
+  "2022-07": 0.003953,
+  "2022-08": 0.004101,
+  "2022-09": 0.004881,
+  "2022-10": 0.004275,
+  "2022-11": 0.003963,
+  "2022-12": 0.003976,
+  "2023-01": 0.004543,
+  "2023-02": 0.004552,
+  "2023-03": 0.003298,
+  "2023-04": 0.004864,
+  "2023-05": 0.003289,
+  "2023-06": 0.004618,
+  "2023-07": 0.004269,
+  "2023-08": 0.004051,
+  "2023-09": 0.004631,
+  "2023-10": 0.003599,
+  "2023-11": 0.003524,
+  "2023-12": 0.003243,
+  "2024-01": 0.003157,
+  "2024-02": 0.003343,
+  "2024-03": 0.00535,
+  "2024-04": 0.001024,
+  "2024-05": 0.003491,
+  "2024-06": 0.003338,
+  "2024-07": 0.002832,
+  "2024-08": 0.003207,
+  "2024-09": 0.003175,
+  "2024-10": 0.003142,
+  "2024-11": 0.003445,
+  "2024-12": 0.003116,
+  "2025-01": 0.00329,
+  "2025-02": 0.00416,
+  "2025-03": 0.003793,
+  "2025-04": 0.00356,
+  "2025-05": 0.004159,
+  "2025-06": 0.004182,
+  "2025-07": 0.004169,
+  "2025-08": 0.004228,
+  "2025-09": 0.004192,
+  "2025-10": 0.004212,
+  "2025-11": 0.004228,
+  "2025-12": 0.004104,
+  "2026-01": 0.004212,
+  "2026-02": 0.004188,
+  "2026-03": 0.003676,
+  "2026-04": 0.004205,
+  "2026-05": 0.004149,
+  "2067-06": 0.068652,
+  "2067-10": 0.070469,
+  "2068-01": 0.05368,
+  "2068-04": 0.047977,
+  "2068-07": 0.055257,
+  "2068-09": 0.083831,
+  "2068-12": 0.063699,
+  "2069-03": 0.059243,
+  "2069-06": 0.058695,
+  "2069-09": 0.04976,
+  "2069-12": 0.031267
+};
+
+function getJAM(mes) {
+  // Busca o coeficiente JAM da tabela oficial (Taxa 3% - não optantes, maioria dos contratos)
+  // A tabela usa chave AAAA-MM. Se não encontrar o mês exato, usa o mais próximo anterior.
+  if (TABELA_JAM[mes]) return TABELA_JAM[mes];
+  // fallback: buscar o mais recente anterior
+  const chaves = Object.keys(TABELA_JAM).filter(k => k <= mes).sort();
+  if (chaves.length) return TABELA_JAM[chaves[chaves.length - 1]];
+  return 0.002466; // fallback final
+}
+
+function calcularLinha(base, mes) {
+  const fgts    = base * 0.08;
+  const ma      = mesesAtraso(mes);
+  const coef    = getJAM(mes);                  // coeficiente real do mês (tabela Quarta/CEF)
+  const jam     = fgts * coef;                  // JAM = FGTS x coeficiente do mês
+  const base_jm = fgts + jam;                   // base para juros e multa = FGTS + JAM
+  const juros   = base_jm * 0.005 * ma;         // Juros = (FGTS+JAM) x 0,5% x meses
+  const multa   = ma >= 2                       // Multa = (FGTS+JAM) x 10% ou 5%
+                  ? base_jm * 0.10
+                  : base_jm * 0.05;
+  const total   = fgts + juros + multa;         // Total = FGTS + Juros + Multa
+  return { base, fgts, jam, juros, multa, total, ma, coef };
+}
+
+function gerarMeses(inicio, fim) {
+  const [iy, im] = inicio.split('-').map(Number);
+  const [fy, fm] = fim.split('-').map(Number);
+  const comps = [];
+  let y=iy, m=im;
+  while (y < fy || (y===fy && m<=fm)) {
+    comps.push(y+'-'+String(m).padStart(2,'0'));
+    m++; if(m>12){m=1;y++;}
+  }
+  return comps;
+}
+
+function renderListaCompetencias(containerId, comps) {
+  const lista = document.getElementById(containerId);
+  lista.innerHTML = '';
+  comps.forEach(mes => {
+    const item = document.createElement('div');
+    item.className = 'comp-item';
+    item.dataset.mes = mes;
+    item.innerHTML = `
+      <span class="comp-mes">${mesLabel(mes)}</span>
+      <div style="display:flex;align-items:center;gap:6px;flex:1">
+        <span style="font-size:12px;color:#9ca3af">R$</span>
+        <input class="comp-input" type="text" placeholder="Base de cálculo" data-mes="${mes}" inputmode="decimal"
+          oninput="atualizarFgtsPreview(this)" />
+      </div>
+      <span class="comp-label-fgts" id="prev-${containerId}-${mes}">FGTS: —</span>
+      <button class="comp-remove" onclick="this.closest('.comp-item').remove()" title="Remover">✕</button>
+    `;
+    lista.appendChild(item);
+  });
+}
+
+function atualizarFgtsPreview(input) {
+  const base = parseBRL(input.value);
+  const mes = input.dataset.mes;
+  // encontra o span de preview mais próximo
+  const prev = input.closest('.comp-item').querySelector('.comp-label-fgts');
+  if (base > 0) {
+    prev.textContent = 'FGTS: ' + fmt(base * 0.08);
+    prev.style.color = '#185FA5';
+  } else {
+    prev.textContent = 'FGTS: —';
+    prev.style.color = '#9ca3af';
+  }
+}
+
+// ===================== ABA EMPRESA =====================
+function gerarCompetencias() {
+  const inicio = document.getElementById('comp-inicio').value;
+  const fim    = document.getElementById('comp-fim').value;
+  const err    = document.getElementById('err-empresa');
+  if (!inicio || !fim) { err.textContent = 'Informe o mês inicial e final.'; return; }
+  if (inicio > fim)    { err.textContent = 'Mês inicial deve ser anterior ao final.'; return; }
+  err.textContent = '';
+  renderListaCompetencias('comp-lista', gerarMeses(inicio, fim));
+}
+
+function calcularEmpresa() {
+  const nome = document.getElementById('emp-nome').value.trim();
+  const cnpj = document.getElementById('emp-cnpj').value.trim();
+  const err  = document.getElementById('err-empresa');
+  const items = document.querySelectorAll('#comp-lista .comp-item');
+
+  if (!items.length) { err.textContent = 'Adicione ao menos uma competência.'; return; }
+
+  const competencias = [];
+  items.forEach(item => {
+    const mes  = item.dataset.mes;
+    const base = parseBRL(item.querySelector('input').value);
+    if (base > 0) competencias.push({ mes, base });
+  });
+
+  if (!competencias.length) { err.textContent = 'Informe a base de cálculo de ao menos uma competência.'; return; }
+  err.textContent = '';
+
+  dadosEmpresa = { nome, cnpj, competencias };
+  document.getElementById('dot-empresa').style.background = '#22c55e';
+  document.getElementById('tab-empresa').classList.add('done');
+
+  renderResultado();
+  showTab('resultado');
+}
+
+// ===================== ABA FUNCIONÁRIO =====================
+function gerarCompetenciasFuncionario() {
+  const inicio = document.getElementById('func-comp-inicio').value;
+  const fim    = document.getElementById('func-comp-fim').value;
+  const err    = document.getElementById('err-func');
+  if (!inicio || !fim) { err.textContent = 'Informe o mês inicial e final.'; return; }
+  if (inicio > fim)    { err.textContent = 'Mês inicial deve ser anterior ao final.'; return; }
+  err.textContent = '';
+  renderListaCompetencias('func-comp-lista', gerarMeses(inicio, fim));
+}
+
+function calcularFuncionario() {
+  const nome   = document.getElementById('func-nome').value.trim();
+  const pis    = document.getElementById('func-pis').value.trim();
+  const adm    = document.getElementById('func-admissao').value;
+  const err    = document.getElementById('err-func');
+  const items  = document.querySelectorAll('#func-comp-lista .comp-item');
+
+  if (!nome)         { err.textContent = 'Informe o nome do funcionário.'; return; }
+  if (!items.length) { err.textContent = 'Adicione ao menos uma competência.'; return; }
+
+  const competencias = [];
+  items.forEach(item => {
+    const mes  = item.dataset.mes;
+    const base = parseBRL(item.querySelector('input').value);
+    if (base > 0) competencias.push({ mes, base });
+  });
+
+  if (!competencias.length) { err.textContent = 'Informe a base de cálculo de ao menos um mês.'; return; }
+  err.textContent = '';
+
+  const func = { id: Date.now(), nome, pis, admissao: adm, competencias };
+  dadosFuncionarios.push(func);
+
+  // Limpar form
+  document.getElementById('func-nome').value = '';
+  document.getElementById('func-pis').value = '';
+  document.getElementById('func-admissao').value = '';
+  document.getElementById('func-comp-inicio').value = '';
+  document.getElementById('func-comp-fim').value = '';
+  document.getElementById('func-comp-lista').innerHTML = '';
+
+  renderListaFuncionariosCalc();
+  document.getElementById('dot-funcionario').style.background = '#22c55e';
+  document.getElementById('tab-funcionario').classList.add('done');
+}
+
+function removerFuncionario(id) {
+  dadosFuncionarios = dadosFuncionarios.filter(f => f.id !== id);
+  renderListaFuncionariosCalc();
+}
+
+function renderListaFuncionariosCalc() {
+  const lista = document.getElementById('lista-funcionarios-calc');
+  lista.innerHTML = '';
+
+  dadosFuncionarios.forEach(func => {
+    let tFgts=0, tGuia=0;
+    func.competencias.forEach(c => {
+      const r = calcularLinha(c.base, c.mes);
+      tFgts += r.fgts; tGuia += r.total;
+    });
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="func-item-header">
+        <div class="func-nome-badge">
+          <svg class="icon" style="display:inline;vertical-align:-3px;margin-right:4px" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+          ${func.nome}
+          ${func.pis ? `<span style="font-size:11px;color:#9ca3af;font-weight:400;margin-left:8px">PIS: ${func.pis}</span>` : ''}
         </div>
-        <div class="metric">
-          <div class="metric-val" id="mMensal" style="color:#185FA5">—</div>
-          <div class="metric-lbl">FGTS por mês (8%)</div>
-        </div>
-        <div class="metric">
-          <div class="metric-val" id="mMeses">—</div>
-          <div class="metric-lbl">Meses em débito</div>
-        </div>
+        <button class="func-remove-btn" onclick="removerFuncionario(${func.id})">Remover</button>
       </div>
-
-      <div class="card-title" style="margin-bottom:0.5rem">
-        <svg class="icon" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-        Detalhamento por período
+      <div style="display:flex;gap:16px;flex-wrap:wrap">
+        <div><span style="font-size:11px;color:#9ca3af">Competências:</span> <strong style="font-size:13px">${func.competencias.length}</strong></div>
+        <div><span style="font-size:11px;color:#9ca3af">FGTS total:</span> <strong style="font-size:13px;color:#185FA5">${fmt(tFgts)}</strong></div>
+        <div><span style="font-size:11px;color:#9ca3af">Total a recolher:</span> <strong style="font-size:13px;color:#dc2626">${fmt(tGuia)}</strong></div>
       </div>
-
-      <div class="table-scroll">
-        <table class="period-table">
-          <thead>
-            <tr>
-              <th style="width:36px">#</th>
-              <th>Competência</th>
-              <th style="text-align:right">Remuneração</th>
-              <th style="text-align:right">FGTS (8%)</th>
-            </tr>
-          </thead>
-          <tbody id="periodoTbody"></tbody>
-          <tfoot id="periodoTfoot"></tfoot>
-        </table>
-      </div>
-
-      <div class="info-box">
-        <span id="infoText"></span>
-      </div>
-
-      <div class="export-row">
-        <button class="exp-btn pdf-btn" onclick="exportarPDF()">
-          <svg class="icon" style="width:18px;height:18px" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-          Exportar PDF
+      <div style="margin-top:10px">
+        <button class="btn-secondary" style="font-size:12px;padding:8px" onclick="verResultadoFuncionario(${func.id})">
+          <svg class="icon" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Ver resultado completo
         </button>
-        <button class="exp-btn xls-btn" onclick="exportarExcel()">
-          <svg class="icon" style="width:18px;height:18px" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="10" y1="9" x2="14" y2="9"/></svg>
-          Exportar Excel
-        </button>
+      </div>
+    `;
+    lista.appendChild(card);
+  });
+}
+
+function verResultadoFuncionario(id) {
+  renderResultadoFuncionario(id);
+  showTab('resultado');
+}
+
+// ===================== RESULTADO =====================
+function renderResultado() {
+  const cont = document.getElementById('resultado-conteudo');
+  const { nome, cnpj, competencias } = dadosEmpresa;
+  const hoje = new Date().toLocaleDateString('pt-BR');
+
+  let tBase=0, tFgts=0, tJam=0, tJuros=0, tMulta=0, tGuia=0;
+  let rows = '';
+
+  competencias.forEach(c => {
+    const r = calcularLinha(c.base, c.mes);
+    tBase+=r.base; tFgts+=r.fgts; tJam+=r.jam;
+    tJuros+=r.juros; tMulta+=r.multa; tGuia+=r.total;
+
+    rows += `<tr>
+      <td>${mesLabel(c.mes)}</td>
+      <td class="num">${fmt(r.base)}</td>
+      <td class="num">${fmt(r.fgts)}</td>
+      <td class="num">${fmt(r.jam)}</td>
+      <td class="num">${fmt(r.juros)}</td>
+      <td class="num">${fmt(r.multa)}</td>
+      <td class="num" style="color:#185FA5;font-weight:600">${fmt(r.total)}</td>
+      <td class="center"><span class="${r.ma>=2?'tag-atencao':'tag-ok'}">${r.ma} mês${r.ma!==1?'es':''}</span></td>
+    </tr>`;
+  });
+
+  // Guarda para exportação
+  window._resultadoAtual = { tipo:'empresa', nome, cnpj, competencias, hoje };
+
+  cont.innerHTML = `
+    <div class="result-hero">
+      <div class="result-hero-lbl">TOTAL GERAL A RECOLHER — ${nome || 'Empresa'}</div>
+      <div class="result-hero-val">${fmt(tGuia)}</div>
+      <div class="result-hero-sub">${competencias.length} competência${competencias.length!==1?'s':''} · Emitido em ${hoje}</div>
+    </div>
+
+    <div class="metrics">
+      <div class="metric"><div class="metric-val">${fmt(tFgts)}</div><div class="metric-lbl">FGTS Principal (8%)</div></div>
+      <div class="metric"><div class="metric-val">${fmt(tJam)}</div><div class="metric-lbl">JAM (0,2466%)</div></div>
+      <div class="metric"><div class="metric-val">${fmt(tJuros)}</div><div class="metric-lbl">Juros (0,5%/mês)</div></div>
+      <div class="metric"><div class="metric-val">${fmt(tMulta)}</div><div class="metric-lbl">Multa (5% ou 10%)</div></div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="result-table">
+        <thead><tr>
+          <th>Competência</th><th>Base de Cálculo</th><th>FGTS (8%)</th>
+          <th>JAM</th><th>Juros</th><th>Multa</th>
+          <th>Guia a Recolher</th><th>Atraso</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr>
+          <td>TOTAL</td>
+          <td class="num">${fmt(tBase)}</td>
+          <td class="num">${fmt(tFgts)}</td>
+          <td class="num">${fmt(tJam)}</td>
+          <td class="num">${fmt(tJuros)}</td>
+          <td class="num">${fmt(tMulta)}</td>
+          <td class="num" style="font-size:14px">${fmt(tGuia)}</td>
+          <td></td>
+        </tr></tfoot>
+      </table>
+    </div>
+
+    <div class="info-box" style="margin-top:0">
+      ⚠️ <strong>Provisão aproximada:</strong> Este cálculo utiliza os coeficientes mensais de JAM da tabela oficial CEF. O valor exato é gerado pelo <strong>FGTS Digital ou SEFIP</strong>, pois considera coeficientes diários acumulados entre o vencimento (dia 20) e a data de pagamento. A diferença entre esta provisão e o valor oficial pode variar conforme o período em atraso. Fundamentação: art. 15 da Lei nº 8.036/1990 e Circular CEF 541/2001.
+    </div>
+
+    <div class="export-row">
+      <button class="exp-btn pdf-btn" onclick="exportarPDF()">
+        <svg class="icon" style="width:17px;height:17px" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Exportar PDF
+      </button>
+      <button class="exp-btn xls-btn" onclick="exportarExcel()">
+        <svg class="icon" style="width:17px;height:17px" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Exportar Excel
+      </button>
+    </div>
+  `;
+
+  document.getElementById('dot-resultado').style.background = '#22c55e';
+  document.getElementById('tab-resultado').classList.add('done');
+}
+
+function renderResultadoFuncionario(id) {
+  const func = dadosFuncionarios.find(f => f.id === id);
+  if (!func) return;
+
+  const cont = document.getElementById('resultado-conteudo');
+  const hoje = new Date().toLocaleDateString('pt-BR');
+  let tBase=0, tFgts=0, tJam=0, tJuros=0, tMulta=0, tGuia=0;
+  let rows = '';
+
+  func.competencias.forEach(c => {
+    const r = calcularLinha(c.base, c.mes);
+    tBase+=r.base; tFgts+=r.fgts; tJam+=r.jam;
+    tJuros+=r.juros; tMulta+=r.multa; tGuia+=r.total;
+
+    rows += `<tr>
+      <td>${mesLabel(c.mes)}</td>
+      <td class="num">${fmt(r.base)}</td>
+      <td class="num">${fmt(r.fgts)}</td>
+      <td class="num">${fmt(r.jam)}</td>
+      <td class="num">${fmt(r.juros)}</td>
+      <td class="num">${fmt(r.multa)}</td>
+      <td class="num" style="color:#185FA5;font-weight:600">${fmt(r.total)}</td>
+      <td class="center"><span class="${r.ma>=2?'tag-atencao':'tag-ok'}">${r.ma} mês${r.ma!==1?'es':''}</span></td>
+    </tr>`;
+  });
+
+  window._resultadoAtual = { tipo:'funcionario', func, hoje };
+
+  cont.innerHTML = `
+    <div class="result-hero">
+      <div class="result-hero-lbl">TOTAL A RECOLHER — ${func.nome}</div>
+      <div class="result-hero-val">${fmt(tGuia)}</div>
+      <div class="result-hero-sub">
+        ${func.pis ? 'PIS: '+func.pis+' · ' : ''}
+        ${func.admissao ? 'Adm: '+new Date(func.admissao+'T00:00:00').toLocaleDateString('pt-BR')+' · ' : ''}
+        ${func.competencias.length} competência${func.competencias.length!==1?'s':''} · ${hoje}
       </div>
     </div>
 
-  </div>
+    <div class="metrics">
+      <div class="metric"><div class="metric-val">${fmt(tFgts)}</div><div class="metric-lbl">FGTS Principal (8%)</div></div>
+      <div class="metric"><div class="metric-val">${fmt(tJam)}</div><div class="metric-lbl">JAM (0,2466%)</div></div>
+      <div class="metric"><div class="metric-val">${fmt(tJuros)}</div><div class="metric-lbl">Juros (0,5%/mês)</div></div>
+      <div class="metric"><div class="metric-val">${fmt(tMulta)}</div><div class="metric-lbl">Multa (5% ou 10%)</div></div>
+    </div>
 
-  <p class="footer-note">Fundamentação: art. 15 da Lei nº 8.036/1990 — Alíquota FGTS: 8%</p>
+    <div class="table-wrap">
+      <table class="result-table">
+        <thead><tr>
+          <th>Competência</th><th>Base de Cálculo</th><th>FGTS (8%)</th>
+          <th>JAM</th><th>Juros</th><th>Multa</th>
+          <th>Guia a Recolher</th><th>Atraso</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr>
+          <td>TOTAL</td>
+          <td class="num">${fmt(tBase)}</td>
+          <td class="num">${fmt(tFgts)}</td>
+          <td class="num">${fmt(tJam)}</td>
+          <td class="num">${fmt(tJuros)}</td>
+          <td class="num">${fmt(tMulta)}</td>
+          <td class="num" style="font-size:14px">${fmt(tGuia)}</td>
+          <td></td>
+        </tr></tfoot>
+      </table>
+    </div>
 
-  <script>
-    let dadosCalculo = null;
+    <div class="info-box" style="margin-top:0">
+      ⚠️ <strong>Provisão aproximada:</strong> Este cálculo utiliza os coeficientes mensais de JAM da tabela oficial CEF. O valor exato é gerado pelo <strong>FGTS Digital ou SEFIP</strong>, pois considera coeficientes diários acumulados entre o vencimento (dia 20) e a data de pagamento. A diferença entre esta provisão e o valor oficial pode variar conforme o período em atraso. Fundamentação: art. 15 da Lei nº 8.036/1990 e Circular CEF 541/2001.
+    </div>
 
-    function parseBRL(s) {
-      if (!s) return NaN;
-      return parseFloat(s.replace(/\s/g,'').replace(/R\$\s?/g,'').replace(/\./g,'').replace(',','.'));
-    }
-    function fmt(n) { return n.toLocaleString('pt-BR', { style:'currency', currency:'BRL' }); }
+    <div class="export-row">
+      <button class="exp-btn pdf-btn" onclick="exportarPDF()">
+        <svg class="icon" style="width:17px;height:17px" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Exportar PDF
+      </button>
+      <button class="exp-btn xls-btn" onclick="exportarExcel()">
+        <svg class="icon" style="width:17px;height:17px" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Exportar Excel
+      </button>
+    </div>
+  `;
+}
 
-    function setSal(v) {
-      document.getElementById('salInput').value = v.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-      document.getElementById('errMsg').textContent = '';
-    }
-    function setMeses(v) {
-      document.getElementById('mesesInput').value = v;
-      document.getElementById('errMsg').textContent = '';
-    }
+// ===================== EXPORTAR EXCEL =====================
+function exportarExcel() {
+  const r = window._resultadoAtual;
+  if (!r) return;
+  const wb = XLSX.utils.book_new();
 
-    function getCompetencias(meses) {
-      const hoje = new Date();
-      const lista = [];
-      for (let i = meses - 1; i >= 0; i--) {
-        const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
-        const label = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-        lista.push(label.charAt(0).toUpperCase() + label.slice(1));
+  const isFunc = r.tipo === 'funcionario';
+  const titulo  = isFunc ? r.func.nome : (r.nome || 'Empresa');
+  const subtit  = isFunc
+    ? `PIS: ${r.func.pis||'—'}  |  Admissão: ${r.func.admissao ? new Date(r.func.admissao+'T00:00:00').toLocaleDateString('pt-BR') : '—'}`
+    : `CNPJ: ${r.cnpj||'—'}`;
+  const comps   = isFunc ? r.func.competencias : r.competencias;
+
+  const rows = [
+    ['PROVISÃO FGTS EM ATRASO'],
+    [isFunc ? 'Funcionário:' : 'Empresa:', titulo],
+    [subtit],
+    ['Emitido em:', r.hoje],
+    [],
+    ['Competência','Base de Cálculo','FGTS (8%)','JAM','Juros','Multa','Guia a Recolher','Meses Atraso']
+  ];
+
+  let tBase=0,tFgts=0,tJam=0,tJuros=0,tMulta=0,tGuia=0;
+  comps.forEach(c => {
+    const res = calcularLinha(c.base, c.mes);
+    tBase+=res.base; tFgts+=res.fgts; tJam+=res.jam;
+    tJuros+=res.juros; tMulta+=res.multa; tGuia+=res.total;
+    rows.push([mesLabel(c.mes), res.base, res.fgts, res.jam, res.juros, res.multa, res.total, res.ma]);
+  });
+  rows.push(['TOTAL', tBase, tFgts, tJam, tJuros, tMulta, tGuia, '']);
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:22},{wch:16},{wch:14},{wch:12},{wch:12},{wch:12},{wch:18},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, ws, 'FGTS Atraso');
+  XLSX.writeFile(wb, `FGTS_${titulo.replace(/\s/g,'_')}_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+// ===================== EXPORTAR PDF =====================
+function exportarPDF() {
+  const r = window._resultadoAtual;
+  if (!r) return;
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
+  const azul=[24,95,165], branco=[255,255,255], cinza=[60,60,60], cinzaCl=[120,120,120];
+
+  const isFunc = r.tipo === 'funcionario';
+  const titulo  = isFunc ? r.func.nome : (r.nome || 'Empresa');
+  const comps   = isFunc ? r.func.competencias : r.competencias;
+
+  doc.setFillColor(...azul);
+  doc.rect(0,0,297,22,'F');
+  doc.setTextColor(...branco);
+  doc.setFontSize(13); doc.setFont('helvetica','bold');
+  doc.text('PROVISÃO FGTS EM ATRASO', 14, 10);
+  doc.setFontSize(8); doc.setFont('helvetica','normal');
+  doc.text(`${isFunc?'Funcionário':'Empresa'}: ${titulo}   |   Emitido em: ${r.hoje}`, 14, 17);
+  if (!isFunc && r.cnpj) doc.text(`CNPJ: ${r.cnpj}`, 220, 17);
+  if (isFunc) {
+    const sub = [r.func.pis?'PIS: '+r.func.pis:'', r.func.admissao?'Adm: '+new Date(r.func.admissao+'T00:00:00').toLocaleDateString('pt-BR'):''].filter(Boolean).join('   |   ');
+    if (sub) doc.text(sub, 220, 17);
+  }
+
+  const body = [];
+  let tBase=0,tFgts=0,tJam=0,tJuros=0,tMulta=0,tGuia=0;
+  comps.forEach(c => {
+    const res = calcularLinha(c.base, c.mes);
+    tBase+=res.base; tFgts+=res.fgts; tJam+=res.jam;
+    tJuros+=res.juros; tMulta+=res.multa; tGuia+=res.total;
+    body.push([mesLabel(c.mes), fmt(res.base), fmt(res.fgts), fmt(res.jam), fmt(res.juros), fmt(res.multa), fmt(res.total), res.ma+' mês'+(res.ma!==1?'es':'')]);
+  });
+  body.push(['TOTAL', fmt(tBase), fmt(tFgts), fmt(tJam), fmt(tJuros), fmt(tMulta), fmt(tGuia), '']);
+
+  doc.autoTable({
+    startY: 28,
+    head:[['Competência','Base de Cálculo','FGTS (8%)','JAM','Juros','Multa','Guia a Recolher','Atraso']],
+    body,
+    styles:{fontSize:8, cellPadding:3, textColor:cinza},
+    headStyles:{fillColor:azul, textColor:branco, fontStyle:'bold', fontSize:8},
+    columnStyles:{
+      0:{cellWidth:38}, 1:{cellWidth:28,halign:'right'}, 2:{cellWidth:26,halign:'right'},
+      3:{cellWidth:22,halign:'right'}, 4:{cellWidth:22,halign:'right'},
+      5:{cellWidth:22,halign:'right'}, 6:{cellWidth:32,halign:'right'}, 7:{cellWidth:24,halign:'center'}
+    },
+    alternateRowStyles:{fillColor:[245,247,250]},
+    didParseCell(data){
+      if(data.row.index===body.length-1){
+        data.cell.styles.fillColor=azul;
+        data.cell.styles.textColor=branco;
+        data.cell.styles.fontStyle='bold';
       }
-      return lista;
+    },
+    margin:{left:14,right:14}
+  });
+
+  const fy = doc.lastAutoTable.finalY + 8;
+  doc.setFillColor(230,241,251);
+  doc.roundedRect(14,fy,269,12,2,2,'F');
+  doc.setTextColor(12,68,124); doc.setFontSize(7.5);
+  doc.text('PROVISAO APROXIMADA: Este calculo utiliza coeficientes mensais de JAM (tabela CEF/Quarta). O valor exato oficial e gerado pelo FGTS Digital ou SEFIP, pois considera coeficientes diarios acumulados entre o vencimento e a data de pagamento. A diferenca pode variar conforme o periodo em atraso. Fundamentacao: art. 15 da Lei no 8.036/1990 e Circular CEF 541/2001.', 18, fy+7, {maxWidth:260});
+
+  doc.save(`FGTS_${titulo.replace(/\s/g,'_')}_${new Date().toISOString().slice(0,10)}.pdf`);
+}
+
+// ===================== PROTEÇÕES =====================
+document.addEventListener('contextmenu', e => { e.preventDefault(); return false; });
+document.addEventListener('keydown', e => {
+  if (e.key==='F12') { e.preventDefault(); return false; }
+  if (e.ctrlKey && e.key==='u') { e.preventDefault(); return false; }
+  if (e.ctrlKey && e.key==='s') { e.preventDefault(); return false; }
+  if (e.ctrlKey && e.shiftKey && ['I','J','C'].includes(e.key)) { e.preventDefault(); return false; }
+  if (e.ctrlKey && e.key==='p') { e.preventDefault(); return false; }
+});
+document.addEventListener('selectstart', e => {
+  if (e.target.tagName!=='INPUT'&&e.target.tagName!=='TEXTAREA') { e.preventDefault(); return false; }
+});
+document.addEventListener('dragstart', e => { e.preventDefault(); return false; });
+(function(){
+  const mob=/Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
+  if(mob) return;
+  setInterval(()=>{
+    if(window.outerWidth-window.innerWidth>160||window.outerHeight-window.innerHeight>160){
+      document.body.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#6b7280;font-size:14px;">🔒 Acesso restrito.</div>';
     }
-
-    function calcular() {
-      const raw = document.getElementById('salInput').value;
-      const sal = parseBRL(raw);
-      const meses = parseInt(document.getElementById('mesesInput').value) || 0;
-      const nome = document.getElementById('nomeInput').value.trim();
-      const err = document.getElementById('errMsg');
-
-      if (isNaN(sal) || sal <= 0) { err.textContent = 'Informe uma remuneração válida e maior que zero.'; return; }
-      if (meses <= 0) { err.textContent = 'Informe a quantidade de meses em débito.'; return; }
-      if (meses > 120) { err.textContent = 'Quantidade máxima: 120 meses.'; return; }
-      err.textContent = '';
-
-      const fgtsMensal = sal * 0.08;
-      const total = fgtsMensal * meses;
-      const competencias = getCompetencias(meses);
-
-      dadosCalculo = { sal, fgtsMensal, total, meses, nome, competencias };
-
-      document.getElementById('rTotal').textContent = fmt(total);
-      document.getElementById('rSub').textContent = `${meses} mês${meses > 1 ? 'es' : ''} × ${fmt(fgtsMensal)}/mês (8%)`;
-      document.getElementById('mSal').textContent = fmt(sal);
-      document.getElementById('mMensal').textContent = fmt(fgtsMensal);
-      document.getElementById('mMeses').textContent = `${meses} mês${meses > 1 ? 'es' : ''}`;
-
-      const tbody = document.getElementById('periodoTbody');
-      tbody.innerHTML = competencias.map((c, i) => `
-        <tr>
-          <td>${i + 1}</td>
-          <td>${c}</td>
-          <td style="text-align:right">${fmt(sal)}</td>
-          <td style="text-align:right;color:#185FA5;font-weight:500">${fmt(fgtsMensal)}</td>
-        </tr>`).join('');
-
-      document.getElementById('periodoTfoot').innerHTML = `
-        <tr>
-          <td colspan="2">Total</td>
-          <td style="text-align:right">${fmt(sal * meses)}</td>
-          <td style="text-align:right">${fmt(total)}</td>
-        </tr>`;
-
-      const nomeStr = nome ? `do trabalhador ${nome} ` : '';
-      document.getElementById('infoText').textContent =
-        `Conforme o art. 15 da Lei nº 8.036/1990, o empregador é obrigado a depositar mensalmente 8% da remuneração paga ao trabalhador. O total de FGTS ${nomeStr}não depositado no período de ${meses} mês${meses > 1 ? 'es' : ''} é de ${fmt(total)}.`;
-
-      document.getElementById('resultCard').classList.remove('hidden');
-      document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-
-    function exportarExcel() {
-      if (!dadosCalculo) return;
-      const { sal, fgtsMensal, total, meses, nome, competencias } = dadosCalculo;
-      const nomeStr = nome || '—';
-      const hoje = new Date().toLocaleDateString('pt-BR');
-
-      const cabecalho = [
-        ['CÁLCULO DE FGTS PARA FINS PROCESSUAIS'],
-        ['Data de emissão:', hoje],
-        ['Trabalhador:', nomeStr],
-        ['Fundamentação:', 'Art. 15 da Lei nº 8.036/1990 — Alíquota: 8%'],
-        [],
-        ['RESUMO'],
-        ['Remuneração mensal bruta:', fmt(sal)],
-        ['FGTS mensal (8%):', fmt(fgtsMensal)],
-        ['Meses em débito:', meses],
-        ['Total devido:', fmt(total)],
-        [],
-        ['DETALHAMENTO POR PERÍODO'],
-        ['#', 'Competência', 'Remuneração', 'FGTS (8%)']
-      ];
-
-      const linhas = competencias.map((c, i) => [i + 1, c, sal, fgtsMensal]);
-      linhas.push(['', 'TOTAL', sal * meses, total]);
-
-      const ws = XLSX.utils.aoa_to_sheet([...cabecalho, ...linhas]);
-      ws['!cols'] = [{ wch: 5 }, { wch: 30 }, { wch: 24 }, { wch: 20 }];
-
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'FGTS');
-      XLSX.writeFile(wb, `FGTS_${nomeStr.replace(/\s/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`);
-    }
-
-    function exportarPDF() {
-      if (!dadosCalculo) return;
-      const { sal, fgtsMensal, total, meses, nome, competencias } = dadosCalculo;
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-
-      const azul = [24, 95, 165];
-      const cinzaEsc = [60, 60, 60];
-      const cinzaClaro = [120, 120, 120];
-      const branco = [255, 255, 255];
-      const nomeStr = nome || 'Não informado';
-      const hoje = new Date().toLocaleDateString('pt-BR');
-
-      doc.setFillColor(...azul);
-      doc.rect(0, 0, 210, 28, 'F');
-      doc.setTextColor(...branco);
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text('CÁLCULO DE FGTS PARA FINS PROCESSUAIS', 14, 12);
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'normal');
-      doc.text('Art. 15 da Lei nº 8.036/1990 — Alíquota: 8%', 14, 20);
-      doc.text(`Emitido em ${hoje}`, 196, 20, { align: 'right' });
-
-      let y = 38;
-      doc.setTextColor(...cinzaEsc);
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
-      doc.text('IDENTIFICAÇÃO', 14, y);
-      y += 7;
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      doc.setTextColor(...cinzaClaro);
-      doc.text('Trabalhador:', 14, y);
-      doc.setTextColor(...cinzaEsc);
-      doc.text(nomeStr, 55, y);
-      doc.setTextColor(...cinzaClaro);
-      doc.text('Data de emissão:', 120, y);
-      doc.setTextColor(...cinzaEsc);
-      doc.text(hoje, 160, y);
-      y += 12;
-
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(...cinzaEsc);
-      doc.text('RESUMO DO CÁLCULO', 14, y);
-      y += 6;
-
-      const resumo = [
-        ['Remuneração mensal bruta', fmt(sal)],
-        ['FGTS mensal devido (8%)', fmt(fgtsMensal)],
-        ['Quantidade de meses em débito', `${meses} mês${meses > 1 ? 'es' : ''}`],
-        ['TOTAL DE FGTS DEVIDO', fmt(total)],
-      ];
-
-      resumo.forEach(([lbl, val], i) => {
-        const isTotal = i === resumo.length - 1;
-        if (isTotal) {
-          doc.setFillColor(...azul);
-          doc.roundedRect(14, y - 4, 182, 9, 2, 2, 'F');
-          doc.setTextColor(...branco);
-          doc.setFont('helvetica', 'bold');
-        } else {
-          doc.setFillColor(i % 2 === 0 ? 245 : 255, i % 2 === 0 ? 247 : 255, i % 2 === 0 ? 250 : 255);
-          doc.rect(14, y - 4, 182, 9, 'F');
-          doc.setTextColor(...cinzaEsc);
-          doc.setFont('helvetica', 'normal');
-        }
-        doc.setFontSize(9);
-        doc.text(lbl, 18, y + 1);
-        doc.text(val, 192, y + 1, { align: 'right' });
-        y += 10;
-      });
-
-      y += 6;
-      doc.setTextColor(...cinzaEsc);
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
-      doc.text('DETALHAMENTO POR PERÍODO', 14, y);
-      y += 4;
-
-      doc.autoTable({
-        startY: y,
-        head: [['#', 'Competência', 'Remuneração', 'FGTS (8%)']],
-        body: [
-          ...competencias.map((c, i) => [i + 1, c, fmt(sal), fmt(fgtsMensal)]),
-          ['', 'TOTAL', fmt(sal * meses), fmt(total)]
-        ],
-        styles: { fontSize: 8, cellPadding: 3, textColor: cinzaEsc },
-        headStyles: { fillColor: azul, textColor: branco, fontStyle: 'bold', fontSize: 8 },
-        columnStyles: {
-          0: { cellWidth: 12, halign: 'center' },
-          1: { cellWidth: 70 },
-          2: { cellWidth: 52, halign: 'right' },
-          3: { cellWidth: 48, halign: 'right' }
-        },
-        alternateRowStyles: { fillColor: [245, 247, 250] },
-        didParseCell: (data) => {
-          if (data.row.index === competencias.length) {
-            data.cell.styles.fillColor = azul;
-            data.cell.styles.textColor = branco;
-            data.cell.styles.fontStyle = 'bold';
-          }
-        },
-        margin: { left: 14, right: 14 },
-        tableWidth: 182
-      });
-
-      const finalY = doc.lastAutoTable.finalY + 10;
-      doc.setFillColor(230, 241, 251);
-      doc.roundedRect(14, finalY, 182, 20, 3, 3, 'F');
-      doc.setTextColor(12, 68, 124);
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'normal');
-      const texto = `Conforme o art. 15 da Lei nº 8.036/1990, o empregador é obrigado a depositar mensalmente 8% da remuneração paga ao trabalhador. O total de FGTS não depositado no período de ${meses} mês${meses > 1 ? 'es' : ''} é de ${fmt(total)}.`;
-      doc.text(texto, 18, finalY + 8, { maxWidth: 174 });
-
-      const nomeArq = nome ? nome.replace(/\s/g, '_') : 'trabalhador';
-      doc.save(`FGTS_${nomeArq}_${new Date().toISOString().slice(0, 10)}.pdf`);
-    }
-
-    // Eventos
-    document.getElementById('salInput').addEventListener('keydown', e => { if (e.key === 'Enter') calcular(); });
-    document.getElementById('mesesInput').addEventListener('keydown', e => { if (e.key === 'Enter') calcular(); });
-    document.getElementById('salInput').addEventListener('input', () => { document.getElementById('errMsg').textContent = ''; });
-    document.getElementById('mesesInput').addEventListener('input', () => { document.getElementById('errMsg').textContent = ''; });
-
-    // Proteção: bloquear botão direito
-    document.addEventListener('contextmenu', function(e) { e.preventDefault(); return false; });
-
-    // Proteção: bloquear atalhos de teclado
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'F12') { e.preventDefault(); return false; }
-      if (e.ctrlKey && e.key === 'u') { e.preventDefault(); return false; }
-      if (e.ctrlKey && e.key === 's') { e.preventDefault(); return false; }
-      if (e.ctrlKey && e.shiftKey && e.key === 'I') { e.preventDefault(); return false; }
-      if (e.ctrlKey && e.shiftKey && e.key === 'J') { e.preventDefault(); return false; }
-      if (e.ctrlKey && e.shiftKey && e.key === 'C') { e.preventDefault(); return false; }
-      if (e.ctrlKey && e.key === 'a') { e.preventDefault(); return false; }
-      if (e.ctrlKey && e.key === 'p') { e.preventDefault(); return false; }
-    });
-
-    // Proteção: bloquear seleção de texto fora dos inputs
-    document.addEventListener('selectstart', function(e) {
-      if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
-        e.preventDefault(); return false;
-      }
-    });
-
-    // Proteção: bloquear arrastar
-    document.addEventListener('dragstart', function(e) { e.preventDefault(); return false; });
-
-    // Proteção: detectar DevTools (apenas desktop, ignora mobile)
-    (function detectDevTools() {
-      const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
-      if (isMobile) return;
-      const threshold = 160;
-      function check() {
-        if (window.outerWidth - window.innerWidth > threshold || window.outerHeight - window.innerHeight > threshold) {
-          document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#6b7280;font-size:14px;">🔒 Acesso restrito.</div>';
-        }
-      }
-      setInterval(check, 1000);
-    })();
-  </script>
-
+  },1000);
+})();
+</script>
 </body>
 </html>
